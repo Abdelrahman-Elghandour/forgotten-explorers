@@ -70,7 +70,6 @@
     var playEpochRef = React.useRef(0);
     var completionTimerRef = React.useRef(null);
     var volumeRampRef = React.useRef(null);
-    var narrationRef = React.useRef(null);
     var sourceErrorRef = React.useRef(-1);
     var fallbackUsedRef = React.useRef(false);
     var removeInteractionListenersRef = React.useRef(function () {});
@@ -82,58 +81,15 @@
     var languageToggleRef = React.useRef(props.onLanguageToggle);
     var source = sources[sourceIndex] || sources[0];
 
-    React.useEffect(function () {
-      if (!voiceSource) return undefined;
-      var track = null;
-      try {
-        track = new global.Audio(voiceSource);
-      } catch (error) {
-        return undefined;
-      }
-      if (!track) return undefined;
-      track.preload = "auto";
-      track.loop = false;
-      narrationRef.current = track;
-      var available = function () {
-        if (narrationRef.current !== track) return;
-        var video = videoRef.current;
-        // A narration replaces the score so the two voices never overlap.
-        if (video && !mutedRef.current) {
-          try { video.muted = true; } catch (error) { /* detached */ }
-        }
-        if (!mutedRef.current && video && !video.paused && !video.ended) {
-          var play = track.play();
-          if (play && play.catch) play.catch(function () {});
-        }
-      };
-      var missing = function () {
-        if (narrationRef.current === track) narrationRef.current = null;
-      };
-      track.addEventListener("canplaythrough", available);
-      track.addEventListener("error", missing);
-      try { track.load(); } catch (error) { missing(); }
-      return function () {
-        track.removeEventListener("canplaythrough", available);
-        track.removeEventListener("error", missing);
-        try { track.pause(); } catch (error) { /* detached */ }
-        if (narrationRef.current === track) narrationRef.current = null;
-      };
-    }, [voiceSource]);
-
-    React.useEffect(function () {
-      var track = narrationRef.current;
-      if (!track) return;
-      if (isMuted || fading || needsTap) {
-        try { track.pause(); } catch (error) { /* detached */ }
-        return;
-      }
-      var video = videoRef.current;
-      if (video && !Number.isNaN(video.currentTime) && Math.abs(track.currentTime - video.currentTime) > 2) {
-        try { track.currentTime = Math.max(0, video.currentTime); } catch (error) { /* detached */ }
-      }
-      var play = track.play();
-      if (play && play.catch) play.catch(function () {});
-    }, [isMuted, fading, needsTap]);
+    var narration = global.useIntroNarration
+      ? global.useIntroNarration(videoRef, voiceSource)
+      : { blocked: false, elapsed: -1, unlock: function () {}, stop: function () {}, sync: function () {} };
+    var transcriptState = React.useState(false);
+    var transcriptOpen = transcriptState[0], setTranscriptOpen = transcriptState[1];
+    var captionState = React.useState(true);
+    var captionsOn = captionState[0], setCaptionsOn = captionState[1];
+    var introData = global.INTRO_NARRATION || {};
+    var currentCue = (global.SpaceNarration && global.SpaceNarration.cueAt(introData.cues, narration.elapsed)) || null;
 
     mutedRef.current = Boolean(props.muted);
     firstInteractionRef.current = props.onFirstInteraction;
@@ -165,6 +121,7 @@
       video.muted = shouldMute;
       updateMuted(shouldMute, true);
       setNeedsTap(false);
+      if (allowUnmute && !shouldMute) narration.unlock();
 
       var playResult;
       try {
@@ -219,6 +176,7 @@
     function finishIntro() {
       if (completedRef.current) return;
       completedRef.current = true;
+      narration.stop();
       interactionConsumedRef.current = true;
       removeInteractionListenersRef.current();
       playEpochRef.current += 1;
@@ -273,7 +231,7 @@
     function handleMuteToggle() {
       unlockFromControl();
       var video = videoRef.current;
-      var next = !(video ? video.muted : mutedRef.current);
+      var next = narration.blocked ? false : !(video ? video.muted : mutedRef.current);
       explicitMuteRef.current = next;
       if (video) video.muted = next;
       updateMuted(next, true);
@@ -397,9 +355,9 @@
 
     var progress = duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
     var rootClass = "intro-overlay" + (fading ? " intro-overlay--fading" : "");
-    var muteLabel = isMuted
-      ? (isArabic ? "تشغيل الصوت السينمائي / Enable cinematic audio" : "Enable cinematic audio / تشغيل الصوت السينمائي")
-      : (isArabic ? "كتم الصوت / Mute audio" : "Mute audio / كتم الصوت");
+    var muteLabel = isMuted || narration.blocked
+      ? "Unmute / تشغيل الصوت"
+      : "Mute / كتم الصوت";
     var skipLabel = isArabic ? "تخطي" : "Skip";
     var languageLabel = isArabic ? "EN" : "عربي";
     var errorLabel = isArabic ? "تعذر تحميل الفيديو. يمكنك التخطي أو المحاولة مرة أخرى." : "The cinematic video could not load. You can skip or try again.";
@@ -429,6 +387,22 @@
       }),
       h("div", { className: "intro-video-shade", "aria-hidden": "true" }),
       h("div", { className: "intro-radial-glow", "aria-hidden": "true" }),
+      captionsOn && currentCue && h("div", {
+        className: "intro-caption voice-caption", dir: "ltr", lang: "en",
+        "aria-live": "off", "data-audio-time": String(narration.elapsed)
+      }, h("span", null, currentCue.text)),
+      transcriptOpen && h("div", {
+        className: "intro-transcript-backdrop", "data-intro-control": "true",
+        onClick: function (event) { if (event.target === event.currentTarget) setTranscriptOpen(false); }
+      }, h("section", {
+        className: "intro-transcript-panel", dir: "ltr", lang: "en",
+        "aria-label": "English intro transcript"
+      }, h("div", { className: "intro-transcript-panel__head" },
+        h("span", null, "INTRO TRANSCRIPT / النص"),
+        h("button", { type: "button", "data-intro-control": "true", "aria-label": "Close transcript", onClick: function () { setTranscriptOpen(false); } }, "×")
+      ), h("h2", null, "Forgotten Explorers"),
+      h("p", null, introData.text || "The intro transcript is loading."),
+      h("p", { className: "intro-transcript-original", dir: "rtl", lang: "ar" }, introData.arabic || ""))) ,
       h(
         "div",
         { className: "intro-badge", dir: "ltr" },
@@ -438,6 +412,31 @@
       h(
         "nav",
         { className: "intro-top-hud", dir: "ltr", "aria-label": isArabic ? "أدوات المقدمة" : "Introduction controls" },
+        h("button", {
+          type: "button", className: "voice-transcript-toggle intro-transcript-toggle",
+          "data-intro-control": "true", "aria-expanded": transcriptOpen,
+          onClick: function () { unlockFromControl(); setTranscriptOpen(!transcriptOpen); }
+        }, "Transcript / النص"),
+        h("button", {
+          type: "button", className: "voice-transcript-toggle intro-captions-toggle",
+          "data-intro-control": "true", "aria-pressed": captionsOn,
+          "aria-label": "English captions",
+          onClick: function () { unlockFromControl(); setCaptionsOn(!captionsOn); }
+        }, "CC"),
+          h(
+            "button",
+            {
+              type: "button",
+              className: "intro-audio-control intro-audio-control--corner",
+              "data-intro-control": "true",
+              onClick: handleMuteToggle,
+              "aria-pressed": !(isMuted || narration.blocked),
+              "aria-label": muteLabel,
+              dir: isArabic ? "rtl" : "ltr"
+            },
+            h("span", { className: isMuted || narration.blocked ? "intro-audio-icon intro-audio-icon--muted" : "intro-audio-icon", "aria-hidden": "true" }),
+            h("span", null, muteLabel)
+          ),
         h(
           "button",
           {
@@ -468,20 +467,6 @@
         h(
           "div",
           { className: "intro-status-row" },
-          h(
-            "button",
-            {
-              type: "button",
-              className: isArabic ? "intro-audio-control intro-audio-control--rtl" : "intro-audio-control",
-              "data-intro-control": "true",
-              onClick: handleMuteToggle,
-              "aria-pressed": !isMuted,
-              "aria-label": muteLabel,
-              dir: isArabic ? "rtl" : "ltr"
-            },
-            h("span", { className: isMuted ? "intro-audio-icon intro-audio-icon--muted" : "intro-audio-icon", "aria-hidden": "true" }),
-            h("span", null, muteLabel)
-          ),
           h(
             "span",
             { className: "intro-timecode", dir: "ltr", "aria-label": isArabic ? "الوقت المنقضي" : "Elapsed time" },

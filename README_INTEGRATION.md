@@ -28,7 +28,9 @@ The HUD shows everything at once, no chips or extra clicks: bilingual mission na
 
 `VOICE_TRACKS` in `index.html` maps every mission id — `opp, spi, vik, ins, pat, eag, sur, lun, ven, huy, voy, kep` — to `./audio/<id>.mp3` then `./audio/<id>.ogg`. Dropping a file in place is all that is needed; the player tries each extension, reports missing recordings with a quiet notice, and needs no code change. The player itself shows play/pause, an animated equaliser whose bars only move for the craft actually speaking, a replay control, and the track id. Missions that already ship a recording (Opportunity, Spirit, InSight, Pathfinder, Spirit-era, Eagle) play immediately.
 
-`INTRO_VOICE` (`./audio/intro.mp3`) is the dedicated slot for a narration of the opening film: when the file exists the intro plays it instead of the score and keeps it in step with the video; when it does not, the film behaves exactly as before.
+`INTRO_VOICE` now contains the supplied Arabic reassurance narration. It starts at the first black frame after Signal Lost (11.833333 s), stays locked to the video clock and ducks the existing score instead of replacing it. Timed English subtitles, CC and full Transcript / النص controls are integrated; the full intro transcript remains available afterward. See `NARRATION_HANDOFF.md` for cue files, audio-policy handling and the spacecraft-recording limitation.
+
+The twelve exact English mission transcripts now populate each mission’s `enDiary`, shown in EN mode and opt-in in AR. Existing spacecraft tracks were audited: seven are identical 10-second WAV placeholders mislabeled MP3, and five are absent. Full text is available, but verified mission phrase timing awaits real recordings; untimed transcript previews are labeled honestly.
 
 ## Which supplied application is used
 

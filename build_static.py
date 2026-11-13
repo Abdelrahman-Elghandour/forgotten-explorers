@@ -9,6 +9,6 @@ if output.exists():
 output.mkdir()
 for name in ("index.html", "immersive_explorer.html", "original_step8.html", "manus-routes.json"):
     shutil.copy2(root / name, output / name)
-for name in ("audio", "images", "videos", "src", "public"):
+for name in ("audio", "images", "videos", "src", "public", "subtitles"):
     shutil.copytree(root / name, output / name)
 print("Static app ready in", output)

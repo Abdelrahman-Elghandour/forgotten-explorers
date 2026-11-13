@@ -23,12 +23,27 @@ const named = program => {
   return map;
 };
 // Declarations this task intentionally rewrote; every other original must be byte-identical.
-const REWRITTEN = new Set(['fn:ForgottenExplorers', 'fn:Space', 'fn:Surface', 'const:ac', 'const:root']);
+const REWRITTEN = new Set(['fn:ForgottenExplorers', 'fn:Space', 'fn:Surface', 'fn:tone', 'fn:ambient', 'const:ac', 'const:root']);
 const base = named(before), now = named(after);
 for (const [key, node] of base) {
   if (REWRITTEN.has(key)) continue;
   assert(now.has(key), `original declaration removed: ${key}`);
   assert.deepEqual(clean(now.get(key)), clean(node), `original declaration changed: ${key}`);
+}
+
+// Output-bus edits may change only the audio connection, not the synth itself.
+const withoutBus = node => JSON.parse(JSON.stringify(clean(node), (key, value) => {
+  if (value && value.type === 'CallExpression' && value.callee?.name === 'narrationMaster') {
+    return { type:'MemberExpression', object:{type:'Identifier', name:'a'}, property:{type:'Identifier', name:'destination'}, computed:false };
+  }
+  return value;
+}));
+for (const key of ['fn:tone','fn:ambient']) assert.deepEqual(withoutBus(now.get(key)), clean(base.get(key)), key+' preserves every synth parameter');
+const previousHtml = read('tests/fixtures/pre-transcripts.html');
+const previous = named(parse(previousHtml));
+assert.deepEqual(clean(now.get('fn:Space')), clean(previous.get('fn:Space')), 'Solar System canvas is exactly unchanged in this revision');
+for (const rule of previousHtml.match(/\.craft-[a-zA-Z_-]+[^{}]*\{[^{}]*\}/g) || []) {
+  assert(updated.includes(rule), 'original craft framing rule changed: '+rule.slice(0,55));
 }
 
 // The canvas keeps its exact geometry, palette and planet set; only the intro freeze was added.
@@ -67,7 +82,7 @@ const surfaceSrc = updated.slice(updated.indexOf('function Surface({'), updated.
 for (const [label, re] of [
   ['all five telemetry cells rendered from SL', /SL\[en \? "en" : "ar"\]\.map\(\(label, i\)/],
   ['launch / last contact / lifespan / distance / discovery values', /<dd dir="rtl">\{fm\.s\[i\]\}<\/dd>/],
-  ['diary is always visible', /<p className="craft-quote" dir="rtl">«\{fm\.diary\}»<\/p>/],
+  ['bilingual diary is always visible', /en \? fm\.enDiary : fm\.diary/],
   ['blueprint action opens console tab', /onOpen\(fm\.id, "blue"\)/],
   ['simulator action opens console tab', /onOpen\(fm\.id, "sim"\)/],
   ['lesson action opens console tab', /onOpen\(fm\.id, "lesson"\)/],

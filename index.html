@@ -5,10 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>مستكشفون نسيهم الزمن | Forgotten Explorers</title>
   <link rel="stylesheet" href="./src/components/cinematic-intro.css" />
+  <link rel="stylesheet" href="./src/components/voice-captions.css" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
+  <script src="./src/data/intro-transcript.js"></script>
+  <script src="./src/data/voice-transcripts.js"></script>
+  <script src="./src/data/mission-caption-cues.js"></script>
+  <script src="./src/audio/narration-support.js"></script>
+  <script src="./src/audio/intro-narration.js"></script>
   <script src="./src/components/CinematicIntro.js"></script>
   <style>
     html, body, #root {
@@ -149,6 +155,8 @@ const M = [
     s: ["مارس 2009", "30 أكتوبر 2018", "9.5 سنوات (المخطط 3.5)", "مدار حول الشمس", "اكتشف أكثر من 2600 كوكب خارج المجموعة الشمسية"],
     p: ["ألواح شمسية ثابتة|لم تتأثر، لكن الوقود نفد", "عدسة ضخمة وكاشف ضوء|قاس تغير سطوع النجوم بدقة", "عجلات تفاعل للتوجيه|تعطلت اثنتان فاستُخدمت الشمس للتوازن", "هوائي إرسال البيانات|أُغلق عند نفاد وقود التوجيه"] },
 ];
+// The Arabic diary remains the source record; enDiary is the exact supplied English transcript.
+M.forEach((mission) => { mission.enDiary = window.VOICE_TRANSCRIPTS && window.VOICE_TRANSCRIPTS[mission.id] || ""; });
 
 const PART_META = [
   { k: "الطاقة", ic: Sun, pos: [20, 25] }, { k: "الأدوات العلمية", ic: Camera, pos: [78, 25] },
@@ -164,15 +172,25 @@ const QUIZ = [
 ];
 
 /* ============ SOUND (Web Audio) ============ */
-let ctx, amb;
+let ctx, amb, narrationBus;
+let narrationDuckTarget = 1;
 const ac = () => { ctx ||= new (window.AudioContext || window.webkitAudioContext)(); if (ctx.state !== "running") ctx.resume().catch(() => {}); return ctx; };
+function narrationMaster() {
+  const a = ac();
+  if (!narrationBus) {
+    narrationBus = a.createGain();
+    narrationBus.gain.value = narrationDuckTarget;
+    narrationBus.connect(a.destination);
+  }
+  return narrationBus;
+}
 function tone(f, d = 0.15, type = "sine", t0 = 0, vol = 0.12, f2) {
   try {
     const a = ac(), o = a.createOscillator(), g = a.createGain(), t = a.currentTime + t0;
     o.type = type; o.frequency.setValueAtTime(f, t);
     if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-    o.connect(g).connect(a.destination); o.start(t); o.stop(t + d);
+    o.connect(g).connect(narrationMaster()); o.start(t); o.stop(t + d);
   } catch (e) {}
 }
 const sfx = {
@@ -188,11 +206,19 @@ function ambient(on) {
       const g = a.createGain(); g.gain.value = 0.03;
       const o1 = a.createOscillator(), o2 = a.createOscillator(), l = a.createOscillator(), lg = a.createGain();
       o1.frequency.value = 55; o2.type = "triangle"; o2.frequency.value = 82.4; l.frequency.value = 0.12; lg.gain.value = 0.015;
-      l.connect(lg).connect(g.gain); o1.connect(g); o2.connect(g); g.connect(a.destination);
+      l.connect(lg).connect(g.gain); o1.connect(g); o2.connect(g); g.connect(narrationMaster());
       [o1, o2, l].forEach((o) => o.start()); amb = { g, os: [o1, o2, l] };
     } else if (!on && amb) { amb.os.forEach((o) => o.stop()); amb.g.disconnect(); amb = null; }
   } catch (e) {}
 }
+window.addEventListener("fe:narration-duck", (event) => {
+  narrationDuckTarget = event.detail && event.detail.ducked ? 0.24 : 1;
+  if (!narrationBus || !ctx) return;
+  const now = ctx.currentTime;
+  narrationBus.gain.cancelScheduledValues(now);
+  narrationBus.gain.setValueAtTime(narrationBus.gain.value, now);
+  narrationBus.gain.linearRampToValueAtTime(narrationDuckTarget, now + 0.18);
+});
 
 /* ============ EXTRA DATA: English, lessons, UI strings ============ */
 const EN = { opp: ["Opportunity", "The dust-storm survivor"], spi: ["Spirit", "The trapped twin"], vik: ["Viking 1 & 2", "Pioneers of the search for life"], ins: ["InSight", "The Marsquake listener"], pat: ["Pathfinder & Sojourner", "The micro-rover revolution"], eag: ["Apollo 11 'Eagle'", "The first footprint"], sur: ["Surveyor 3", "Visited by Apollo 12"], lun: ["Lunokhod 1", "The remote-control pioneer"], ven: ["Mariner & Venus", "A first look at a hellish world"], huy: ["Huygens on Titan", "Frozen on an icy world"], voy: ["Voyager 1 & 2", "Golden Record messengers"], kep: ["Kepler Telescope", "The planet hunter"] };
@@ -215,8 +241,22 @@ const LESSON = {
 const SL = { ar: ["تاريخ الإطلاق", "آخر اتصال", "العمر مقابل المخطط", "المسافة", "أهم اكتشاف"], en: ["Launch", "Last contact", "Lifespan vs plan", "Distance", "Key discovery"] };
 /* Voice-over slots: drop ./audio/<id>.mp3 or .ogg in place and it plays — no UI change needed. */
 const VOICE_IDS = ["opp", "spi", "vik", "ins", "pat", "eag", "sur", "lun", "ven", "huy", "voy", "kep", "intro"];
-const VOICE_TRACKS = Object.fromEntries(VOICE_IDS.map((id) => [id, [`./audio/${id}.mp3`, `./audio/${id}.ogg`]]));
+const VOICE_TRACKS = Object.fromEntries(VOICE_IDS.map((id) => [id, [`./audio/${id}.mp3`, `./audio/${id}.ogg`, `./audio/${id}.wav`]]));
 const INTRO_VOICE = "./audio/intro.mp3";
+function missionTranscriptParts(id) {
+  const text = window.VOICE_TRANSCRIPTS && window.VOICE_TRANSCRIPTS[id] || "";
+  return text.match(/[^.!?]+[.!?]+(?:['”’])?|[^.!?]+$/g) || (text ? [text] : []);
+}
+function missionCaptionAt(id, time, duration) {
+  const cues = window.MISSION_CAPTION_CUES && window.MISSION_CAPTION_CUES[id];
+  if (Array.isArray(cues) && window.SpaceNarration) return window.SpaceNarration.cueAt(cues, time);
+  const text = window.VOICE_TRANSCRIPTS && window.VOICE_TRANSCRIPTS[id];
+  if (!text) return null;
+  // The bundled tracks are identical placeholders, not distinct Arabic narrations.
+  // Until matching recordings and real cue metadata are supplied, show an untimed
+  // full transcript, never invented per-phrase timestamps or proportional estimates.
+  return { text, untimed: true };
+}
 const T = {
   ar: { title: "مستكشفون نسيهم الزمن", sub: "مركبات تركناها في الفضاء، وكل واحدة عندها قصة تحكيها لك.", enter: "ادخل الفضاء", hint: "اضغط على أي كوكب أو قمر للسفر إليه", back: "المجموعة الشمسية", time: "آلة الزمن", quiz: "الاختبار", diary: "المذكرات", blue: "التفكيك", sim: "المحاكي", lesson: "الحدود التالية", listen: "استمع للمذكرات", stop: "إيقاف", last: "آخر رسالة", src: "المصادر", dust: "كمية الغبار على الألواح", power: "الطاقة المتبقية", how: "كيف عمل؟", why: "لماذا صمت؟", tap: "اضغط على أحد المكونات", lm1: "بطاريتي منخفضة…", lm2: "الأجهزة تنطفئ واحدًا واحدًا.", lm3: "شكرًا لأنك سمعت قصتي.", get: "حمّل الشهادة", name: "اكتب اسمك", read: "قراءة مريحة", srcNote: "تأكد من شروط الاستخدام لكل صورة قبل نشرها.", lesNote: "ماذا علّمتنا للمهمة القادمة؟" },
   en: { title: "Forgotten Explorers", sub: "Spacecraft we left behind — each has a story to tell you.", enter: "Enter space", hint: "Click any planet or moon to travel there", back: "Solar System", time: "Time Machine", quiz: "Quiz", diary: "Diary", blue: "Blueprint", sim: "Simulator", lesson: "Next Frontier", listen: "Listen", stop: "Stop", last: "Last message", src: "Sources", dust: "Dust on the panels", power: "Power left", how: "How it worked", why: "Why it went silent", tap: "Tap a component", lm1: "My battery is low…", lm2: "Instruments are switching off, one by one.", lm3: "Thank you for hearing my story.", get: "Download certificate", name: "Your name", read: "Easy reading", srcNote: "Check each image's usage terms before publishing.", lesNote: "What did it teach the next mission?" },
@@ -397,7 +437,7 @@ const CraftIcon = ({ c, on, im, real }) => {
   return <img src={src} alt="" referrerPolicy="no-referrer" onError={() => setBad((b) => b + 1)} className="object-cover rounded-full border-2" style={{ width: w, height: w, borderColor: c, boxShadow: `0 0 ${on ? 22 : 10}px ${c}`, transition: "all .7s" }} />;
 };
 const Eq = () => <span aria-hidden className="flex items-end gap-[3px] h-5">{[0, 1, 2, 3].map((i) => <i key={i} className="w-[3px] h-full rounded-full accbg" style={{ transformOrigin: "bottom", animation: `eq .${6 + i}s ease-in-out ${i * 0.1}s infinite` }} />)}</span>;
-function Surface({ B, name, list, nm, tg, en, onOpen, play, imgs, onUpload, onTell, onToggle, onReplay, speaking, voiceId, notice, real }) {
+function Surface({ B, name, list, nm, tg, en, onOpen, play, imgs, onUpload, onTell, onToggle, onReplay, speaking, voiceId, notice, real, captionsOn, onCaptionsToggle, voiceCue }) {
   const [pan, setPan] = useState(0.3), [focus, setFocus] = useState(null), [drag, setDrag] = useState(null);
   const [hi, setHi] = useState(0), [loaded, setLoaded] = useState(false), [gone, setGone] = useState(false), [naturalW, setNaturalW] = useState(0);
   const box = useRef(), moved = useRef(false);
@@ -501,7 +541,8 @@ function Surface({ B, name, list, nm, tg, en, onOpen, play, imgs, onUpload, onTe
 
               <div className="craft-diary">
                 <p className="craft-eyebrow">{en ? "Diary" : "المذكرات"}</p>
-                <p className="craft-quote" dir="rtl">«{fm.diary}»</p>
+                <p className="craft-quote" dir={en ? "ltr" : "rtl"}>«{en ? fm.enDiary : fm.diary}»</p>
+                {!en && captionsOn && <div className="voice-transcript-readable" dir="ltr"><p className="craft-eyebrow">English transcript</p><p>{fm.enDiary}</p></div>}
               </div>
 
               <div className="craft-actions" style={{ gridTemplateColumns: `repeat(${SOLAR.includes(fm.id) ? 3 : 2},1fr)` }}>
@@ -523,6 +564,10 @@ function Surface({ B, name, list, nm, tg, en, onOpen, play, imgs, onUpload, onTe
                 </div>
                 <button className="craft-voice__re" onClick={() => { play("click"); onReplay(fm); }} aria-label={en ? "Replay" : "إعادة"}><Replay size={15} /></button>
               </div>
+              <div className="flex items-center justify-between gap-2">
+                <button className="voice-transcript-toggle" onClick={() => onCaptionsToggle(!captionsOn)} aria-pressed={captionsOn}>{en ? (captionsOn ? "EN captions / transcript on" : "EN captions / transcript off") : (captionsOn ? "إخفاء النص الإنجليزي" : "النص الإنجليزي / EN captions")}</button>
+              </div>
+              {live && captionsOn && voiceCue && <div className="voice-caption" dir="ltr"><span className="voice-caption__label">{voiceCue.untimed ? "English transcript · awaiting matched narration timing" : "English caption"}</span>{voiceCue.text}</div>}
 
               {notice && <p className="text-xs text-amber-300">{notice}</p>}
 
@@ -556,7 +601,8 @@ function ForgottenExplorers() {
   const audioUnlockedRef = useRef(false), startedRef = useRef(false);
   startedRef.current = started;
   const [sel, setSel] = useState(null), [tab, setTab] = useState("diary"), [part, setPart] = useState(null), [dust, setDust] = useState(0);
-  const [speaking, setSpeaking] = useState(false), [voiceId, setVoiceId] = useState(null), [notice, setNotice] = useState("");
+  const [speaking, setSpeaking] = useState(false), [voiceId, setVoiceId] = useState(null), [voiceTime, setVoiceTime] = useState(0), [voiceDuration, setVoiceDuration] = useState(0), [notice, setNotice] = useState("");
+  const [captionsOn, setCaptionsOn] = useState(false);
   const [warp, setWarp] = useState(false), [modal, setModal] = useState(null), [year, setYear] = useState(2026), [lm, setLm] = useState(-1);
   const [qi, setQi] = useState(0), [score, setScore] = useState(0), [pick, setPick] = useState(null), [done, setDone] = useState(false), [name, setName] = useState("");
   const [muted, setMuted] = useState(false), [realIcons, setRealIcons] = useState(false), audioRef = useRef(null);
@@ -576,6 +622,7 @@ function ForgottenExplorers() {
   const mutedRef = useRef(false); mutedRef.current = muted;
   const play = (k) => !mutedRef.current && sfx[k]();
   const t = (k) => T[lang][k], en = lang === "en";
+  useEffect(() => { setCaptionsOn(en); }, [en]);
   const nm = (m) => (en ? EN[m.id][0] : m.n), tg = (m) => (en ? EN[m.id][1] : m.tag);
   const bn = (k) => (en ? BEN[k] : BODIES[k].n);
   const labelRef = useRef(bn); labelRef.current = bn;
@@ -586,14 +633,14 @@ function ForgottenExplorers() {
   const timeline = useMemo(() => [...M].sort((a, b) => a.y - b.y).filter((m) => m.y <= year), [year]);
   const tabs = mission ? [["diary", t("diary")], ["blue", t("blue")], ...(SOLAR.includes(mission.id) ? [["sim", t("sim")]] : []), ["lesson", t("lesson")]] : [];
 
-  useEffect(() => () => { audioRef.current?.pause(); }, []);
+  useEffect(() => () => { if (audioRef.current) audioRef.current.pause(); window.SpaceNarration?.duck("mission", false); }, []);
   useEffect(() => { (async () => { try { const r = await window.storage.get("realIcons"); if (r) setRealIcons(r.value === "1"); } catch (e) {} })(); }, []);
   useEffect(() => {
     if (lm < 0 || lm > 4) return;
     if (!mutedRef.current) tone(440 - lm * 70, 1, "sine", 0, 0.1, 200 - lm * 20);
     const id = setTimeout(() => setLm(lm + 1), 1800); return () => clearTimeout(id);
   }, [lm]);
-  const stop = () => { const a = audioRef.current; audioRef.current = null; if (a) a.pause(); setSpeaking(false); setVoiceId(null); };
+  const stop = () => { const a = audioRef.current; audioRef.current = null; if (a) { a.pause(); a.onpause = null; } window.SpaceNarration?.duck("mission", false); setSpeaking(false); setVoiceId(null); setVoiceTime(0); setVoiceDuration(0); };
 
   // Resume inside user gestures, never from autoplay/onEnded alone.
   const unlockAudio = () => {
@@ -629,6 +676,10 @@ function ForgottenExplorers() {
   const setAppMuted = (m) => {
     mutedRef.current = m;
     setMuted(m);
+    if (audioRef.current) {
+      audioRef.current.muted = m;
+      window.SpaceNarration?.duck("mission", !m && !audioRef.current.paused && !audioRef.current.ended);
+    }
     if (m) ambient(false);
     else if (startedRef.current && audioUnlockedRef.current) ambient(true);
   };
@@ -640,21 +691,27 @@ function ForgottenExplorers() {
   const playVoice = (m, explicit = false) => {
     stop(); setNotice("");
     const list = VOICE_TRACKS[m.id] || [`./audio/${m.id}.mp3`];
-    const a = new Audio(); a.preload = "auto"; audioRef.current = a; let i = 0;
+    const a = new Audio(); a.preload = "auto"; a.muted = mutedRef.current; audioRef.current = a; let i = 0;
     const next = () => {
       if (audioRef.current !== a) return;
-      if (++i >= list.length) { audioRef.current = null; setSpeaking(false); setVoiceId(null); if (explicit) setNotice(en ? "No recording has been added for this craft yet." : "لم يُضف تسجيل صوتي لهذه المركبة بعد."); return; }
+      window.SpaceNarration?.duck("mission", false);
+      if (++i >= list.length) { audioRef.current = null; setSpeaking(false); setVoiceId(null); setVoiceTime(0); setVoiceDuration(0); if (explicit) setNotice(en ? "No recording has been added for this craft yet." : "لم يُضف تسجيل صوتي لهذه المركبة بعد."); return; }
       a.src = list[i]; a.play().catch(() => {});
     };
-    a.onplaying = () => { if (audioRef.current === a) { setSpeaking(true); setVoiceId(m.id); } };
-    a.onended = () => { if (audioRef.current === a) { audioRef.current = null; setSpeaking(false); setVoiceId(null); } };
+    a.onloadedmetadata = () => { if (audioRef.current === a) setVoiceDuration(Number.isFinite(a.duration) ? a.duration : 0); };
+    a.ontimeupdate = () => { if (audioRef.current === a) setVoiceTime(a.currentTime || 0); };
+    a.onplaying = () => { if (audioRef.current === a) { window.SpaceNarration?.duck("mission", true); setSpeaking(true); setVoiceId(m.id); } };
+    a.onpause = () => { if (audioRef.current === a) { window.SpaceNarration?.duck("mission", false); setSpeaking(false); } };
+    a.onended = () => { if (audioRef.current === a) { window.SpaceNarration?.duck("mission", false); audioRef.current = null; setSpeaking(false); setVoiceId(null); setVoiceTime(0); setVoiceDuration(0); } };
     a.onerror = next;
     a.src = list[0]; a.play().catch(() => {});
   };
+  const pauseVoice = () => { const a = audioRef.current; if (!a) return; a.pause(); window.SpaceNarration?.duck("mission", false); setSpeaking(false); };
+  const resumeVoice = () => { const a = audioRef.current; if (!a) return; unlockAudio(); a.play().catch(() => {}); };
   const replayVoice = (m) => { stop(); playVoice(m, true); };
-  const speak = () => (speaking ? stop() : playVoice(mission, true));
+  const speak = () => (speaking ? pauseVoice() : audioRef.current && voiceId === mission?.id ? resumeVoice() : playVoice(mission, true));
   const tellMission = (m) => { if (mutedRef.current) stop(); else playVoice(m); };
-  const toggleVoice = (m) => (speaking ? stop() : playVoice(m, true));
+  const toggleVoice = (m) => (speaking ? pauseVoice() : audioRef.current && voiceId === m.id ? resumeVoice() : playVoice(m, true));
   const toggleIcons = () => { const v = !realIcons; setRealIcons(v); try { window.storage.set("realIcons", v ? "1" : "0"); } catch (e) {} };
 
   const answer = (i) => { if (pick !== null) return; setPick(i); const ok = i === QUIZ[qi].a; if (ok) setScore((s) => s + 1); play(ok ? "win" : "bad"); };
@@ -662,6 +719,7 @@ function ForgottenExplorers() {
   const reset = () => { setQi(0); setScore(0); setPick(null); setDone(false); };
 
   const [how, why] = mission && part !== null ? mission.p[part].split("|") : [];
+  const voiceCue = voiceId ? missionCaptionAt(voiceId, voiceTime, voiceDuration) : null;
   const power = Math.round(100 * Math.pow(1 - dust / 100, 1.6));
   const btn = "glass rounded-full px-4 py-2 text-sm font-bold flex items-center gap-2 hover:bg-white/15 transition";
   const lmLines = mission ? [nm(mission), t("lm1"), `${SL[lang][1]}: ${mission.s[1]}`, t("lm2"), t("lm3")] : [];
@@ -739,6 +797,7 @@ function ForgottenExplorers() {
           <button className={btn} onClick={() => { play("click"); setModal("time"); }}><Clock size={16} /> <span className="hidden sm:inline">{t("time")}</span></button>
           <button className={btn} onClick={() => { play("click"); reset(); setModal("quiz"); }}><Trophy size={16} /> <span className="hidden sm:inline">{t("quiz")}</span></button>
           <button className={btn} onClick={() => setModal("src")}><Database size={16} /> <span className="hidden sm:inline">{t("src")}</span></button>
+          {!introVisible && <button className={btn} onClick={() => { play("click"); setModal("intro"); }} aria-label="Open English intro transcript">Transcript / النص</button>}
           {view !== "solar" && <button className={btn + (realIcons ? " ring-2 ring-white/60" : "")} onClick={toggleIcons} aria-pressed={realIcons} title={en ? "Show real photos instead of icons" : "عرض الصور الحقيقية بدل الأيقونات"}><Camera size={16} /> <span className="hidden sm:inline">{en ? "Real photos" : "الصور الحقيقية"}</span></button>}
           <button className={btn} onClick={toggleMute} aria-label="mute">{muted ? <VolumeX size={16} /> : <Volume2 size={16} />}</button>
         </div>
@@ -751,7 +810,7 @@ function ForgottenExplorers() {
         </div>
       )}
 
-      {view !== "solar" && <Surface key={view} imgs={imgs} onUpload={upload} B={B} name={bn(view)} list={list} nm={nm} tg={tg} en={en} onOpen={openMission} play={play} onTell={tellMission} onToggle={toggleVoice} speaking={speaking} voiceId={voiceId} onReplay={replayVoice} notice={notice} real={realIcons} />}
+      {view !== "solar" && <Surface key={view} imgs={imgs} onUpload={upload} B={B} name={bn(view)} list={list} nm={nm} tg={tg} en={en} onOpen={openMission} play={play} onTell={tellMission} onToggle={toggleVoice} speaking={speaking} voiceId={voiceId} onReplay={replayVoice} notice={notice} real={realIcons} captionsOn={captionsOn} onCaptionsToggle={setCaptionsOn} voiceCue={voiceCue} />}
 
       {/* MISSION CONSOLE */}
       {mission && view !== "solar" && (
@@ -766,11 +825,14 @@ function ForgottenExplorers() {
               <div className="grid md:grid-cols-5 gap-4">
                 <div className="md:col-span-3">
                   <Photo im={imgs[mission.id]} id={mission.id} onUpload={upload} h="h-52" caption />
-                  <p className="mt-3 text-lg leading-loose" dir="rtl">«{mission.diary}»</p>
+                  <p className="mt-3 text-lg leading-loose" dir={en ? "ltr" : "rtl"}>«{en ? mission.enDiary : mission.diary}»</p>
+                  {!en && captionsOn && <div className="voice-transcript-readable mt-3" dir="ltr"><p className="craft-eyebrow">English transcript</p><p>{mission.enDiary}</p></div>}
                   <div className="mt-4 flex gap-2 flex-wrap">
-                    <button onClick={speak} className="accbg rounded-full px-5 py-2 font-bold flex items-center gap-2">{speaking ? <Square size={16} /> : <Volume2 size={16} />} {speaking ? t("stop") : t("listen")}</button>
+                    <button onClick={speak} className="accbg rounded-full px-5 py-2 font-bold flex items-center gap-2">{speaking ? <Pause size={16} /> : <Volume2 size={16} />} {speaking ? (en ? "Pause" : "إيقاف مؤقت") : (audioRef.current && voiceId === mission.id ? (en ? "Resume" : "استئناف") : t("listen"))}</button>
+                    <button className="voice-transcript-toggle" onClick={() => setCaptionsOn(!captionsOn)} aria-pressed={captionsOn}>EN captions / النص الإنجليزي</button>
                     <button onClick={() => { play("click"); setLm(0); }} className={btn}><Wind size={16} /> {t("last")}</button>
                   </div>
+                  {speaking && voiceId === mission.id && captionsOn && voiceCue && <div className="voice-caption mt-3" dir="ltr"><span className="voice-caption__label">{voiceCue.untimed ? "English transcript · awaiting matched narration timing" : "English caption"}</span>{voiceCue.text}</div>}
                   {notice && <p className="mt-2 text-sm text-amber-300">{notice}</p>}
                   {mission.id === "voy" && <LightDayCountdown />}
                 </div>
@@ -820,6 +882,7 @@ function ForgottenExplorers() {
               <ol className="mt-3 grid sm:grid-cols-2 gap-2">{timeline.map((m) => <li key={m.id}><button onClick={() => { setModal(null); setView(m.b); openMission(m.id); play("planet"); }} className="w-full text-start bg-black/30 hover:bg-black/50 rounded-xl p-3"><b className="acc">{m.y}</b> <b>{nm(m)}</b><span className="block text-xs text-slate-400">{bn(m.b)}</span></button></li>)}</ol></>}
             {modal === "src" && <><h2 className="text-xl font-extrabold flex items-center gap-2"><Database size={20} className="acc" /> {t("src")}</h2>
               <ul className="mt-3 space-y-2" dir="ltr">{SRC.map(([n, u]) => <li key={u}><a href={u} target="_blank" rel="noreferrer" className="acc underline">{n}</a></li>)}</ul><p className="mt-4 text-sm text-slate-400">{t("srcNote")}</p></>}
+            {modal === "intro" && <div className="intro-transcript-panel" dir="ltr"><h2 className="text-xl font-extrabold">Transcript / النص</h2><p className="mt-1 text-sm text-slate-400">English transcript of the opening narration</p><p className="mt-4 text-lg leading-loose">{window.INTRO_NARRATION?.text || "Don't worry, we haven't forgotten you."}</p></div>}
             {modal === "quiz" && (!done ? <><h2 className="text-xl font-extrabold flex items-center gap-2"><Trophy size={20} className="acc" /> {t("quiz")}</h2>
               <p className="mt-2 text-sm text-slate-400">{qi + 1}/{QUIZ.length} · {score}</p><p className="mt-2 text-lg font-bold" dir="rtl">{QUIZ[qi].q}</p>
               <div className="mt-3 grid gap-2" dir="rtl">{QUIZ[qi].o.map((o, i) => { const r = pick !== null && i === QUIZ[qi].a, w = pick === i && i !== QUIZ[qi].a; return <button key={i} onClick={() => answer(i)} className={`rounded-xl px-4 py-3 text-start border ${r ? "bg-emerald-600/40 border-emerald-400" : w ? "bg-red-600/40 border-red-400" : "bg-black/30 border-white/10 hover:bg-black/50"}`}>{o}</button>; })}</div>
