@@ -1,0 +1,9 @@
+dist/
+__pycache__/
+*.pyc
+node_modules/
+.env
+.env.*
+!.env.example
+video_upload.json
+logo_upload.json

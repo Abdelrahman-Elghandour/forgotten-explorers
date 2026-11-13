@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>مستكشفون نسيهم الزمن | Forgotten Explorers · NASA Space Apps 2026</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="./src/data/abandonedEquipment.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
+    
+    html, body, #root {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #040711;
+      color: #f1f5f9;
+      overflow: hidden;
+      font-family: 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .glass {
+      background: rgba(10, 14, 28, 0.78);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .glass-card {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.88) 0%, rgba(7, 11, 24, 0.96) 100%);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+    }
+
+    .acc { color: var(--c, #8bd3ff); }
+    .accbg { background: var(--c, #8bd3ff); color: #05070d; }
+    .accbd { border-color: var(--c, #8bd3ff); }
+
+    /* CRT Scanlines & Static */
+    .crt-scanlines {
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.45) 50%),
+                  linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+      background-size: 100% 4px, 6px 100%;
+      pointer-events: none;
+    }
+
+    @keyframes glitchDisplace {
+      0% { transform: translate(0, 0); }
+      20% { transform: translate(-5px, 3px); }
+      40% { transform: translate(5px, -3px); }
+      60% { transform: translate(-4px, -2px); }
+      80% { transform: translate(4px, 4px); }
+      100% { transform: translate(0, 0); }
+    }
+    .glitch-active { animation: glitchDisplace 0.1s infinite; }
+
+    @keyframes pulseBeacon {
+      0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.9); }
+      50% { transform: scale(1.3); opacity: 0.8; box-shadow: 0 0 35px 12px rgba(239, 68, 68, 0.5); }
+    }
+    .pulse-beacon { animation: pulseBeacon 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+    @keyframes transmittingBorder {
+      0%, 100% { border-color: rgba(34, 211, 238, 0.9); box-shadow: 0 0 25px rgba(34, 211, 238, 0.6); }
+      50% { border-color: rgba(245, 158, 11, 0.9); box-shadow: 0 0 30px rgba(245, 158, 11, 0.7); }
+    }
+    .transmitting-active { animation: transmittingBorder 1.5s ease-in-out infinite; }
+
+    @keyframes glow {
+      0%, 100% { text-shadow: 0 0 20px #7c5cff; }
+      50% { text-shadow: 0 0 44px #38bdf8; }
+    }
+
+    @keyframes fin {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: none; }
+    }
+    .fin { animation: fin 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+    @keyframes wp {
+      0% { opacity: 0; transform: scale(0.4); }
+      40% { opacity: 1; }
+      100% { opacity: 0; transform: scale(5); }
+    }
+
+    @keyframes waveBar {
+      0%, 100% { height: 18%; }
+      50% { height: 95%; }
+    }
+
+    /* Scene 4: Spark Burst & Lens Rays */
+    @keyframes sparkBurst {
+      0% { transform: scale(0.1); opacity: 0; filter: brightness(1); }
+      25% { transform: scale(1.8); opacity: 1; filter: brightness(4); }
+      60% { transform: scale(2.4); opacity: 0.95; filter: brightness(2.5); }
+      100% { transform: scale(4.2); opacity: 0; filter: brightness(1); }
+    }
+    .spark-burst { animation: sparkBurst 1.1s cubic-bezier(0.1, 0.9, 0.2, 1) forwards; }
+
+    @keyframes lensRay {
+      0% { transform: scaleX(0.1); opacity: 0; }
+      35% { transform: scaleX(1.8); opacity: 1; }
+      100% { transform: scaleX(3.2); opacity: 0; }
+    }
+    .lens-ray { animation: lensRay 1.1s cubic-bezier(0.1, 0.9, 0.2, 1) forwards; }
+
+    /* Anamorphic letterbox bars */
+    .cinematic-bars::before, .cinematic-bars::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 7.5vh;
+      background: #000;
+      z-index: 25;
+      pointer-events: none;
+    }
+    .cinematic-bars::before { top: 0; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
+    .cinematic-bars::after { bottom: 0; border-top: 1px solid rgba(255, 255, 255, 0.12); }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script>
+    // Polyfill for localStorage storage
+    if (!window.storage) {
+      window.storage = {
+        get: async (key) => {
+          try {
+            const val = localStorage.getItem("fe_" + key);
+            return val !== null ? { value: val } : null;
+          } catch (e) {
+            return null;
+          }
+        },
+        set: async (key, val) => {
+          try {
+            localStorage.setItem("fe_" + key, val);
+          } catch (e) {}
+        }
+      };
+    }
+  </script>
+
+  <script type="text/babel">
+    /* @jsxRuntime classic */
+    const { useState, useMemo, useRef, useEffect } = React;
+
+    /* ============ INLINE ICONS ============ */
+    const Icon = ({ size = 20, className = "", children }) => (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+      >
+        {children}
+      </svg>
+    );
+
+    const Volume2 = (p) => <Icon {...p}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></Icon>;
+    const VolumeX = (p) => <Icon {...p}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></Icon>;
+    const Square = (p) => <Icon {...p}><rect width="18" height="18" x="3" y="3" rx="2"/></Icon>;
+    const Rocket = (p) => <Icon {...p}><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></Icon>;
+    const Clock = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></Icon>;
+    const Trophy = (p) => <Icon {...p}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></Icon>;
+    const Radio = (p) => <Icon {...p}><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></Icon>;
+    const Sun = (p) => <Icon {...p}><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></Icon>;
+    const Camera = (p) => <Icon {...p}><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></Icon>;
+    const X = (p) => <Icon {...p}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></Icon>;
+    const Award = (p) => <Icon {...p}><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></Icon>;
+    const ArrowRight = (p) => <Icon {...p}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></Icon>;
+    const ArrowLeft = (p) => <Icon {...p}><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></Icon>;
+    const Languages = (p) => <Icon {...p}><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></Icon>;
+    const Download = (p) => <Icon {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></Icon>;
+    const Eye = (p) => <Icon {...p}><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></Icon>;
+    const Database = (p) => <Icon {...p}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></Icon>;
+    const Play = (p) => <Icon {...p}><polygon points="5 3 19 12 5 21 5 3"/></Icon>;
+    const Pause = (p) => <Icon {...p}><line x1="10" y1="4" x2="10" y2="20"/><line x1="14" y1="4" x2="14" y2="20"/></Icon>;
+    const Activity = (p) => <Icon {...p}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></Icon>;
+    const FileText = (p) => <Icon {...p}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></Icon>;
+    const ExternalLink = (p) => <Icon {...p}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></Icon>;
+    const Compass = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></Icon>;
+    const Zap = (p) => <Icon {...p}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></Icon>;
+
+    /* ============ AUDIO ENGINE ============ */
+    let ctx = null, solarAmb = null, staticNoiseNode = null, staticGainNode = null;
+    let windNode = null, windGain = null, motorOsc = null, motorGain = null;
+
+    const ac = () => {
+      ctx ||= new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === "suspended") ctx.resume();
+      return ctx;
+    };
+
+    function tone(f, d = 0.15, type = "sine", t0 = 0, vol = 0.1, f2) {
+      try {
+        const a = ac(), o = a.createOscillator(), g = a.createGain(), t = a.currentTime + t0;
+        o.type = type; o.frequency.setValueAtTime(f, t);
+        if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);
+        g.gain.setValueAtTime(vol, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+        o.connect(g).connect(a.destination);
+        o.start(t); o.stop(t + d);
+      } catch (e) {}
+    }
+
+    const sfx = {
+      click: () => tone(880, 0.08, "square", 0, 0.04, 1320),
+      planet: () => { tone(110, 1, "sawtooth", 0, 0.06, 440); tone(220, 1, "sine", 0.05, 0.08, 880); },
+      pip: () => tone(1180, 0.08, "sine", 0, 0.03, 880),
+      win: () => [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.25, "triangle", i * 0.14, 0.12)),
+      bad: () => tone(200, 0.3, "sawtooth", 0, 0.08, 100),
+    };
+
+    function ambient(on) {
+      try {
+        const a = ac();
+        if (on && !solarAmb) {
+          const g = a.createGain(); g.gain.value = 0.035;
+          const o1 = a.createOscillator(), o2 = a.createOscillator(), l = a.createOscillator(), lg = a.createGain();
+          o1.frequency.value = 55; o2.type = "triangle"; o2.frequency.value = 82.4; l.frequency.value = 0.08; lg.gain.value = 0.015;
+          l.connect(lg).connect(g.gain);
+          o1.connect(g); o2.connect(g); g.connect(a.destination);
+          [o1, o2, l].forEach((o) => o.start());
+          solarAmb = { g, os: [o1, o2, l] };
+        } else if (!on && solarAmb) {
+          solarAmb.os.forEach((o) => { try { o.stop(); } catch (e) {} });
+          solarAmb.g.disconnect();
+          solarAmb = null;
+        }
+      } catch (e) {}
+    }
+
+    function setAudioDucking(duck) {
+      if (solarAmb && ctx) {
+        try {
+          const target = duck ? 0.008 : 0.035;
+          solarAmb.g.gain.linearRampToValueAtTime(target, ctx.currentTime + 0.3);
+        } catch (e) {}
+      }
+    }
+
+    /* 1. Procedural Martian Atmospheric Wind */
+    function startMarsWind(vol = 0.075) {
+      try {
+        const a = ac();
+        stopMarsWind();
+        const bufferSize = a.sampleRate * 2.5;
+        const buffer = a.createBuffer(1, bufferSize, a.sampleRate);
+        const data = buffer.getChannelData(0);
+        let b0 = 0, b1 = 0, b2 = 0;
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.99886 * b0 + white * 0.0555179;
+          b1 = 0.99332 * b1 + white * 0.0750759;
+          b2 = 0.96900 * b2 + white * 0.1538520;
+          data[i] = (b0 + b1 + b2) * 0.45;
+        }
+        const noise = a.createBufferSource();
+        noise.buffer = buffer;
+        noise.loop = true;
+
+        const filter = a.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.setValueAtTime(240, a.currentTime);
+        filter.Q.value = 2.2;
+
+        const lfo = a.createOscillator();
+        lfo.frequency.value = 0.15;
+        const lfoGain = a.createGain();
+        lfoGain.gain.value = 140;
+        lfo.connect(lfoGain).connect(filter.frequency);
+        lfo.start();
+
+        const gain = a.createGain();
+        gain.gain.setValueAtTime(0.001, a.currentTime);
+        gain.gain.linearRampToValueAtTime(vol, a.currentTime + 1.2);
+
+        noise.connect(filter).connect(gain).connect(a.destination);
+        noise.start();
+        windNode = noise;
+        windGain = gain;
+      } catch (e) {}
+    }
+
+    function stopMarsWind() {
+      if (windGain && ctx) {
+        try {
+          windGain.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
+          setTimeout(() => {
+            if (windNode) { try { windNode.stop(); windNode.disconnect(); } catch (e) {} }
+            windNode = null; windGain = null;
+          }, 450);
+        } catch (e) {}
+      }
+    }
+
+    /* 2. Mechanical Rover Drive Motor Whine */
+    function startRoverEngine(vol = 0.038) {
+      try {
+        const a = ac();
+        stopRoverEngine(false);
+        const osc = a.createOscillator();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(75, a.currentTime);
+        
+        const filter = a.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.value = 320;
+
+        const gain = a.createGain();
+        gain.gain.setValueAtTime(0.001, a.currentTime);
+        gain.gain.linearRampToValueAtTime(vol, a.currentTime + 0.8);
+
+        osc.connect(filter).connect(gain).connect(a.destination);
+        osc.start();
+        motorOsc = osc;
+        motorGain = gain;
+      } catch (e) {}
+    }
+
+    function stopRoverEngine(pitchDown = true) {
+      if (motorOsc && motorGain && ctx) {
+        try {
+          const now = ctx.currentTime;
+          if (pitchDown) {
+            motorOsc.frequency.exponentialRampToValueAtTime(20, now + 1.1);
+          }
+          motorGain.gain.linearRampToValueAtTime(0.0001, now + 1.1);
+          setTimeout(() => {
+            if (motorOsc) { try { motorOsc.stop(); motorOsc.disconnect(); } catch (e) {} }
+            motorOsc = null; motorGain = null;
+          }, 1150);
+        } catch (e) {}
+      }
+    }
+
+    /* 3. Power-Down Electrical Relay Click & Shutdown Whine */
+    function playPowerDownSfx() {
+      try {
+        const a = ac();
+        const now = a.currentTime;
+        tone(1200, 0.025, "square", 0, 0.07, 400); // Relay click 1
+        const osc = a.createOscillator(), g = a.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(580, now);
+        osc.frequency.exponentialRampToValueAtTime(25, now + 0.95);
+        g.gain.setValueAtTime(0.12, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.95);
+        osc.connect(g).connect(a.destination);
+        osc.start(now);
+        osc.stop(now + 0.95);
+        setTimeout(() => tone(750, 0.03, "square", 0, 0.06, 180), 240); // Relay click 2
+      } catch (e) {}
+    }
+
+    function playBatteryLowBeep() {
+      try {
+        tone(1880, 0.06, "sine", 0, 0.06);
+        tone(1880, 0.06, "sine", 0.12, 0.06);
+      } catch (e) {}
+    }
+
+    function startStaticNoise(vol = 0.06) {
+      try {
+        const a = ac();
+        stopStaticNoise();
+        const bufferSize = a.sampleRate * 2;
+        const buffer = a.createBuffer(1, bufferSize, a.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.8;
+        const noise = a.createBufferSource();
+        noise.buffer = buffer;
+        noise.loop = true;
+        const filter = a.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.value = 1850;
+        filter.Q.value = 2.5;
+        const gain = a.createGain();
+        gain.gain.setValueAtTime(0.001, a.currentTime);
+        gain.gain.linearRampToValueAtTime(vol, a.currentTime + 0.2);
+        noise.connect(filter).connect(gain).connect(a.destination);
+        noise.start();
+        staticNoiseNode = noise;
+        staticGainNode = gain;
+      } catch (e) {}
+    }
+
+    function stopStaticNoise() {
+      try {
+        if (staticGainNode && ctx) {
+          staticGainNode.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.15);
+          setTimeout(() => {
+            if (staticNoiseNode) {
+              try { staticNoiseNode.stop(); staticNoiseNode.disconnect(); } catch (e) {}
+              staticNoiseNode = null;
+            }
+            staticGainNode = null;
+          }, 180);
+        }
+      } catch (e) {}
+    }
+
+    function playRadioSquelch() {
+      try {
+        const a = ac();
+        const now = a.currentTime;
+        const bufferSize = a.sampleRate * 0.035;
+        const buffer = a.createBuffer(1, bufferSize, a.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        const noise = a.createBufferSource();
+        noise.buffer = buffer;
+        const filter = a.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.value = 2400;
+        const gain = a.createGain();
+        gain.gain.setValueAtTime(0.07, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+        noise.connect(filter).connect(gain).connect(a.destination);
+        noise.start(now);
+      } catch (e) {}
+    }
+
+    function playGlitchBurst() {
+      try {
+        const a = ac();
+        const now = a.currentTime;
+        const bufferSize = a.sampleRate * 1.2;
+        const buffer = a.createBuffer(1, bufferSize, a.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+        const noise = a.createBufferSource();
+        noise.buffer = buffer;
+        const filter = a.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(3400, now);
+        filter.frequency.exponentialRampToValueAtTime(300, now + 1.2);
+        const gain = a.createGain();
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.linearRampToValueAtTime(0.001, now + 1.2);
+        noise.connect(filter).connect(gain).connect(a.destination);
+        noise.start(now);
+      } catch (e) {}
+    }
+
+    function playSparkSound() {
+      try {
+        const a = ac();
+        const now = a.currentTime;
+        const o1 = a.createOscillator(), g1 = a.createGain();
+        o1.type = "sine";
+        o1.frequency.setValueAtTime(1760, now);
+        o1.frequency.exponentialRampToValueAtTime(3520, now + 0.35);
+        g1.gain.setValueAtTime(0.16, now);
+        g1.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+        o1.connect(g1).connect(a.destination);
+        o1.start(now);
+        o1.stop(now + 1.2);
+
+        const o2 = a.createOscillator(), g2 = a.createGain();
+        o2.type = "sawtooth";
+        o2.frequency.setValueAtTime(520, now);
+        o2.frequency.exponentialRampToValueAtTime(60, now + 0.22);
+        g2.gain.setValueAtTime(0.14, now);
+        g2.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+        o2.connect(g2).connect(a.destination);
+        o2.start(now);
+        o2.stop(now + 0.28);
+      } catch (e) {}
+    }
+
+    /* ============ NSSDCA DATASET ============ */
+    const NSSDCA_DATA = (typeof window !== "undefined" && window.ABANDONED_EQUIPMENT) ? window.ABANDONED_EQUIPMENT : [];
+
+    const BODIES = {
+      mars:  { n: "المريخ", e: "🔴", c: "#c85a32" },
+      moon:  { n: "القمر", e: "⚪", c: "#a1a8b8" },
+      venus: { n: "الزهرة", e: "🟡", c: "#d4a359" },
+      titan: { n: "تيتان والأقمار الخارجية", e: "🪐", c: "#e07a5f" },
+      deep:  { n: "الفضاء العميق", e: "🌌", c: "#8b5cf6" },
+    };
+
+    const BEN = { mars: "Mars", moon: "The Moon", venus: "Venus", titan: "Titan & outer moons", deep: "Deep space" };
+
+    /* ============ ORIGINAL SOLAR SYSTEM CANVAS ============ */
+    const ORBITS = [
+      { k: "venus", d: 0.22, sp: 1.6, r: 11, c: "#d4a359", a0: 1 },
+      { k: "moon", d: 0.36, sp: 1, r: 12, c: "#4f8cff", a0: 3, earth: true },
+      { k: "mars", d: 0.5, sp: 0.7, r: 10, c: "#c85a32", a0: 5 },
+      { k: "titan", d: 0.68, sp: 0.4, r: 17, c: "#e0b07a", a0: 2, ring: true },
+      { k: "deep", d: 0.86, sp: 0.15, r: 6, c: "#a78bfa", a0: 4 },
+    ];
+
+    function Space({ solar, onPick, labelRef, setHoveredPlanet }) {
+      const cv = useRef(), pos = useRef([]), mouse = useRef({ x: 0, y: 0 });
+      useEffect(() => {
+        const c = cv.current, g = c.getContext("2d"); let W, H, raf, t = 0, shoot = null;
+        const stars = Array.from({ length: 320 }, () => ({ x: Math.random(), y: Math.random(), z: Math.random() * 0.9 + 0.1, p: Math.random() * 6 }));
+        const size = () => { W = c.width = innerWidth; H = c.height = innerHeight; };
+        size(); addEventListener("resize", size);
+        const ball = (x, y, r, col) => {
+          const gr = g.createRadialGradient(x - r / 3, y - r / 3, r / 6, x, y, r);
+          gr.addColorStop(0, "#fff"); gr.addColorStop(0.25, col); gr.addColorStop(1, "#05070d");
+          g.shadowColor = col; g.shadowBlur = 22; g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.shadowBlur = 0;
+        };
+        const draw = () => {
+          t += 0.004; g.clearRect(0, 0, W, H);
+          const mx = mouse.current.x, my = mouse.current.y;
+          stars.forEach((s) => {
+            g.fillStyle = `rgba(255,255,255,${(0.25 + s.z * 0.6) * (0.7 + 0.3 * Math.sin(t * 40 + s.p))})`;
+            g.fillRect((((s.x * W - mx * 30 * s.z) % W) + W) % W, (((s.y * H - my * 30 * s.z) % H) + H) % H, s.z * 2, s.z * 2);
+          });
+          if (!shoot && Math.random() < 0.004) shoot = { x: Math.random() * W, y: Math.random() * H * 0.4, l: 0 };
+          if (shoot) {
+            const gr = g.createLinearGradient(shoot.x, shoot.y, shoot.x - 90, shoot.y - 45);
+            gr.addColorStop(0, "#fff"); gr.addColorStop(1, "transparent");
+            g.strokeStyle = gr; g.beginPath(); g.moveTo(shoot.x, shoot.y); g.lineTo(shoot.x - 90, shoot.y - 45); g.stroke();
+            shoot.x += 14; shoot.y += 7; if (++shoot.l > 45) shoot = null;
+          }
+          pos.current = [];
+          if (solar) {
+            const cx = W / 2 - mx * 12, cy = H / 2 + 10 - my * 8, R = Math.min(W, H * 1.5) / 2 * 0.95, pulse = 1 + Math.sin(t * 25) * 0.04;
+            const sun = g.createRadialGradient(cx, cy, 4, cx, cy, 110 * pulse);
+            sun.addColorStop(0, "#fff7c2"); sun.addColorStop(0.25, "#ffb347"); sun.addColorStop(0.6, "rgba(255,110,0,.25)"); sun.addColorStop(1, "rgba(255,120,0,0)");
+            g.fillStyle = sun; g.beginPath(); g.arc(cx, cy, 110 * pulse, 0, 7); g.fill();
+            ORBITS.forEach((o) => {
+              const rx = o.d * R, ry = rx * 0.38;
+              g.strokeStyle = "rgba(139,211,255,.14)"; g.setLineDash(o.k === "deep" ? [4, 8] : []);
+              g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, 7); g.stroke(); g.setLineDash([]);
+              const a = o.a0 + t * o.sp, x = cx + Math.cos(a) * rx, y = cy + Math.sin(a) * ry;
+              if (o.ring) {
+                g.strokeStyle = "rgba(224,176,122,.75)"; g.lineWidth = 2;
+                g.beginPath(); g.ellipse(x, y, o.r * 1.9, o.r * 0.5, -0.3, 0, 7); g.stroke(); g.lineWidth = 1;
+              }
+              if (o.earth) {
+                ball(x, y, 10, "#3b82f6");
+                const mxp = x + Math.cos(t * 9) * 26, myp = y + Math.sin(t * 9) * 10;
+                ball(mxp, myp, 5.5, "#c4c8d4");
+                pos.current.push({ k: o.k, x: mxp, y: myp, r: 24, name: labelRef.current(o.k) });
+              } else {
+                ball(x, y, o.r, o.c);
+                pos.current.push({ k: o.k, x, y, r: o.r + 14, name: labelRef.current(o.k) });
+              }
+              g.fillStyle = "#e5e7eb"; g.font = "700 14px Tajawal, sans-serif"; g.textAlign = "center";
+              g.fillText(labelRef.current(o.k), x, y + o.r + 24);
+            });
+          }
+          raf = requestAnimationFrame(draw);
+        };
+        draw();
+        return () => { cancelAnimationFrame(raf); removeEventListener("resize", size); };
+      }, [solar]);
+
+      const hit = (e) => pos.current.find((p) => Math.hypot(p.x - e.clientX, p.y - e.clientY) < p.r);
+
+      return (
+        <canvas
+          ref={cv}
+          className="fixed inset-0 w-full h-full"
+          onMouseMove={(e) => {
+            mouse.current = { x: e.clientX / innerWidth - 0.5, y: e.clientY / innerHeight - 0.5 };
+            const h = hit(e);
+            cv.current.style.cursor = h ? "pointer" : "default";
+            setHoveredPlanet(h || null);
+          }}
+          onClick={(e) => {
+            const h = hit(e);
+            if (h) onPick(h.k);
+          }}
+        />
+      );
+    }
+
+    /* ============ LIVE AUDIO WAVEFORM VISUALIZER ============ */
+    const WaveformVisualizer = ({ active, color = "#22d3ee", count = 16, height = 24 }) => (
+      <div className="flex items-end gap-[3px] justify-center" style={{ height }}>
+        {Array.from({ length: count }).map((_, i) => (
+          <span
+            key={i}
+            className="w-[3px] rounded-full transition-all"
+            style={{
+              backgroundColor: color,
+              height: active ? `${Math.max(15, ((Math.sin(i * 0.8) + 1.2) * 42))}%` : "15%",
+              animation: active ? `waveBar 0.${4 + (i % 5)}s ease-in-out ${(i * 0.08).toFixed(2)}s infinite alternate` : "none"
+            }}
+          />
+        ))}
+      </div>
+    );
+
+    /* ============ PART 1: CINEMATIC MARS ROVER OPENING SEQUENCE (OFFICIAL VIDEO) ============ */
+    function CinematicMarsIntro({ lang, muted, onComplete, onSkip }) {
+      const en = lang === "en";
+      const isArabic = lang === "ar";
+
+      const videoRef = useRef(null);
+      const [videoMuted, setVideoMuted] = useState(false);
+      const [audioUnlocked, setAudioUnlocked] = useState(false);
+      const [isPlaying, setIsPlaying] = useState(false);
+      const [currentTime, setCurrentTime] = useState(0);
+      const [duration, setDuration] = useState(29.6);
+      const [fadingOut, setFadingOut] = useState(false);
+      const [loadError, setLoadError] = useState(false);
+
+      // Format time helper (mm:ss)
+      const formatTime = (secs) => {
+        if (!secs || isNaN(secs)) return "00:00";
+        const m = Math.floor(secs / 60);
+        const s = Math.floor(secs % 60);
+        return `${m < 10 ? "0" : ""}${m}:${s < 10 ? "0" : ""}${s}`;
+      };
+
+      // Autoplay handler with graceful muted fallback + audio unlock
+      useEffect(() => {
+        const video = videoRef.current;
+        if (!video) return;
+
+        // Try unmuted autoplay first
+        video.muted = muted;
+        const playPromise = video.play();
+
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              setIsPlaying(true);
+              if (!muted) {
+                setVideoMuted(false);
+                setAudioUnlocked(true);
+              }
+            })
+            .catch(() => {
+              // Browser autoplay policy blocked audio -> fall back to muted autoplay without blocking
+              video.muted = true;
+              setVideoMuted(true);
+              setAudioUnlocked(false);
+              video.play().then(() => {
+                setIsPlaying(true);
+              }).catch((e) => {
+                console.warn("Autoplay error:", e);
+              });
+            });
+        }
+
+        // Global unlock on any first user interaction anywhere on screen
+        const handleFirstInteraction = () => {
+          if (video && !muted) {
+            video.muted = false;
+            setVideoMuted(false);
+            setAudioUnlocked(true);
+          }
+        };
+
+        window.addEventListener("pointerdown", handleFirstInteraction, { once: true });
+        window.addEventListener("keydown", handleFirstInteraction, { once: true });
+
+        return () => {
+          window.removeEventListener("pointerdown", handleFirstInteraction);
+          window.removeEventListener("keydown", handleFirstInteraction);
+        };
+      }, [muted]);
+
+      // Manual Audio Unmute Button Click
+      const handleToggleAudio = (e) => {
+        if (e) e.stopPropagation();
+        const video = videoRef.current;
+        if (!video) return;
+        if (videoMuted) {
+          video.muted = false;
+          setVideoMuted(false);
+          setAudioUnlocked(true);
+        } else {
+          video.muted = true;
+          setVideoMuted(true);
+        }
+      };
+
+      // Finish & Transition to Solar System with 800ms cross-fade
+      const handleFinish = () => {
+        if (fadingOut) return;
+        setFadingOut(true);
+        if (!muted) {
+          ambient(true);
+        }
+        setTimeout(() => {
+          if (onComplete) onComplete();
+        }, 800);
+      };
+
+      // Handle Skip Intro
+      const handleSkip = (e) => {
+        if (e) e.stopPropagation();
+        if (videoRef.current) {
+          try { videoRef.current.pause(); } catch (err) {}
+        }
+        if (fadingOut) return;
+        setFadingOut(true);
+        if (!muted) {
+          ambient(true);
+        }
+        setTimeout(() => {
+          if (onSkip) onSkip();
+        }, 400);
+      };
+
+      const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+      return (
+        <div
+          className="fixed inset-0 z-[100] bg-black select-none overflow-hidden flex items-center justify-center transition-opacity duration-700 ease-out"
+          style={{ opacity: fadingOut ? 0 : 1 }}
+          onClick={() => {
+            if (videoMuted && videoRef.current) {
+              videoRef.current.muted = false;
+              setVideoMuted(false);
+              setAudioUnlocked(true);
+            }
+          }}
+        >
+          {/* Main Video Stream */}
+          <video
+            ref={videoRef}
+            playsInline
+            preload="auto"
+            className="w-full h-full object-cover"
+            onTimeUpdate={() => {
+              if (videoRef.current) {
+                setCurrentTime(videoRef.current.currentTime);
+              }
+            }}
+            onLoadedMetadata={() => {
+              if (videoRef.current && videoRef.current.duration) {
+                setDuration(videoRef.current.duration);
+              }
+            }}
+            onEnded={handleFinish}
+            onError={() => {
+              setLoadError(true);
+              console.warn("Video failed to load");
+            }}
+          >
+            <source src="./videos/intro.mp4" type="video/mp4" />
+            <source src="./videos/Beyond_The_Signal_Realistic_Revision_29.6s.mp4" type="video/mp4" />
+            <source src="./public/video/intro.mp4" type="video/mp4" />
+          </video>
+
+          {/* Fallback if video fails */}
+          {loadError && (
+            <div className="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center p-6 text-center z-20">
+              <p className="text-amber-400 font-mono-code mb-4">
+                {isArabic ? "جاري تحميل البث المباشر للمريخ..." : "Loading Mars video telemetry..."}
+              </p>
+              <button
+                onClick={handleSkip}
+                className="accbg px-6 py-2.5 rounded-full font-bold shadow-xl"
+              >
+                {isArabic ? "الدخول إلى النظام الشمسي مباشرة ←" : "Enter Solar System Directly →"}
+              </button>
+            </div>
+          )}
+
+          {/* Top Telemetry Header & Skip Control */}
+          <div className="absolute top-0 inset-x-0 p-4 sm:p-6 flex items-center justify-between gap-3 pointer-events-auto z-20 bg-gradient-to-b from-black/80 via-black/30 to-transparent">
+            {/* NASA Telemetry Badge */}
+            <div className="flex items-center gap-3">
+              <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
+              <div className="glass px-3 py-1.5 rounded-full text-xs font-mono-code text-cyan-300 border border-cyan-400/30 flex items-center gap-2">
+                <span className="font-bold tracking-wider">NASA SPACE APPS 2026</span>
+                <span className="text-slate-500">|</span>
+                <span className="text-slate-300 hidden sm:inline">BEYOND THE SIGNAL</span>
+              </div>
+            </div>
+
+            {/* Skip Intro Button */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleSkip}
+                className="glass rounded-full px-5 py-2 text-xs sm:text-sm font-mono-code text-slate-200 hover:text-white hover:bg-white/20 transition flex items-center gap-2 shadow-2xl border border-white/20"
+                title={isArabic ? "تخطي العرض السينمائي" : "Skip Cinematic Intro"}
+              >
+                <span>{isArabic ? "تخطي العرض ←" : "Skip Intro →"}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Floating Audio Activator Button (Visible when muted by browser autoplay policy) */}
+          {videoMuted && !loadError && (
+            <div className="absolute bottom-24 inset-x-0 flex justify-center z-30 pointer-events-auto px-4">
+              <button
+                onClick={handleToggleAudio}
+                className="glass px-6 py-3 rounded-2xl bg-cyan-950/85 border-2 border-cyan-400/90 shadow-[0_0_35px_rgba(34,211,238,0.5)] text-cyan-200 hover:text-white font-bold flex items-center gap-3 transform hover:scale-105 active:scale-95 transition cursor-pointer animate-pulse"
+              >
+                <VolumeX size={22} className="text-cyan-400" />
+                <span className="text-sm sm:text-base font-tajawal">
+                  {isArabic ? "🔊 انقر هنا لتفعيل الصوت السينمائي" : "🔊 Click to Enable Cinematic Audio"}
+                </span>
+              </button>
+            </div>
+          )}
+
+          {/* Bottom Telemetry Scrubber & Audio HUD */}
+          <div className="absolute bottom-0 inset-x-0 p-4 sm:p-6 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-auto z-20">
+            <div className="max-w-4xl mx-auto space-y-2">
+              {/* Progress Line */}
+              <div className="w-full bg-slate-800/80 h-1.5 rounded-full overflow-hidden backdrop-blur">
+                <div
+                  className="bg-gradient-to-r from-cyan-400 to-blue-500 h-full transition-all duration-150 ease-linear shadow-[0_0_12px_#38bdf8]"
+                  style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+                />
+              </div>
+
+              {/* Controls & Timecode Bar */}
+              <div className="flex items-center justify-between text-xs font-mono-code text-slate-400 px-1 pt-1">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleToggleAudio}
+                    className="p-1.5 rounded-lg hover:bg-white/10 text-slate-300 hover:text-cyan-400 transition"
+                    title={videoMuted ? (isArabic ? "تشغيل الصوت" : "Unmute") : (isArabic ? "كتم الصوت" : "Mute")}
+                  >
+                    {videoMuted ? <VolumeX size={16} className="text-red-400" /> : <Volume2 size={16} className="text-cyan-400" />}
+                  </button>
+                  <span className="text-cyan-300 font-bold tracking-widest">
+                    {formatTime(currentTime)} / {formatTime(duration)}
+                  </span>
+                </div>
+
+                <div className="text-[11px] text-slate-500 tracking-wider hidden sm:block">
+                  {isArabic ? "بث الأرشيف الرقمي 29.6 ثانية" : "ARCHIVAL MARS TRANSMISSION 29.6s"}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+
+    /* ============ PART 3: IMMERSIVE FULL-SCREEN ROBOT EXPLORER (MOON & MARS) ============ */
+    function PlanetaryRobotExplorer({
+      planetKey, robots, lang, onBackToSolar,
+      onToggleStoryVoiceOver, isStoryVoPlaying, activeStoryVoId
+    }) {
+      const [currentIndex, setCurrentIndex] = useState(0);
+      const [isTransitioning, setIsTransitioning] = useState(false);
+      const [showScript, setShowScript] = useState(false);
+      const en = lang === "en";
+      const isArabic = lang === "ar";
+
+      const currentRobot = robots[currentIndex] || robots[0];
+      const prevRobotRef = useRef(currentRobot);
+
+      const handleNavigate = (newIdx) => {
+        if (newIdx < 0 || newIdx >= robots.length || newIdx === currentIndex || isTransitioning) return;
+        prevRobotRef.current = currentRobot;
+        setIsTransitioning(true);
+        sfx.click();
+
+        // Halfway through camera zoom-out: swap robot data
+        setTimeout(() => {
+          setCurrentIndex(newIdx);
+          setShowScript(false);
+        }, 360);
+
+        // Complete zoom-in
+        setTimeout(() => {
+          setIsTransitioning(false);
+        }, 800);
+      };
+
+      const isCurrentStoryPlaying = isStoryVoPlaying && activeStoryVoId === currentRobot?.id;
+
+      return (
+        <div className="fixed inset-0 overflow-hidden bg-black z-30 select-none">
+          {/* FULL-SCREEN IMMERSIVE ROBOT BACKGROUND */}
+          <div className="absolute inset-0 overflow-hidden">
+            <img
+              key={currentRobot?.id}
+              src={currentRobot?.backgroundImage || `./images/robots/${currentRobot?.id}.jpg`}
+              alt={currentRobot?.name[lang]}
+              className="w-full h-full object-cover"
+              style={{
+                transform: isTransitioning ? "scale(0.86)" : "scale(1.0)",
+                filter: isTransitioning ? "blur(10px) brightness(0.55)" : "blur(0px) brightness(0.92)",
+                transition: "transform 0.75s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.75s ease",
+              }}
+              onError={(e) => {
+                e.currentTarget.src = `./images/${currentRobot?.id}.jpg`;
+              }}
+            />
+            {/* Cinematic Vignette */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#040711] via-[#040711]/40 to-[#040711]/70 pointer-events-none" />
+          </div>
+
+          {/* TRANSITION OVERLAY HUD */}
+          {isTransitioning && (
+            <div className="absolute inset-0 z-40 flex flex-col items-center justify-center pointer-events-none fin">
+              <div className="glass px-6 py-2.5 rounded-full border border-cyan-400/60 font-mono-code text-cyan-300 text-xs sm:text-sm font-bold flex items-center gap-3 animate-pulse shadow-2xl">
+                <Compass size={18} className="animate-spin text-cyan-400" />
+                <span>ORBITAL TRANSIT: {prevRobotRef.current?.name[lang]} → {robots[currentIndex]?.name[lang]}</span>
+              </div>
+            </div>
+          )}
+
+          {/* TOP HUD BAR */}
+          <header className="absolute top-0 inset-x-0 z-30 p-4 flex items-center justify-between gap-3">
+            <button
+              onClick={onBackToSolar}
+              className="glass rounded-full px-4 py-2 text-xs sm:text-sm font-bold flex items-center gap-2 hover:bg-white/20 transition text-slate-200"
+            >
+              <ArrowRight size={16} className={en ? "rotate-180" : ""} />
+              <span>{isArabic ? "المجموعة الشمسية" : "Solar System"}</span>
+            </button>
+
+            <div className="glass rounded-full px-4 py-1.5 flex items-center gap-2 text-xs font-mono-code border border-white/20">
+              <span className={`w-2.5 h-2.5 rounded-full ${planetKey === "mars" ? "bg-red-500 animate-ping" : "bg-slate-300 animate-ping"}`} />
+              <b className="text-white uppercase tracking-wider">{planetKey === "mars" ? (isArabic ? "المريخ" : "Mars") : (isArabic ? "القمر" : "The Moon")}</b>
+              <span className="text-slate-400 border-s border-white/20 ps-2">NSSDCA: {currentRobot?.nssdcaId}</span>
+            </div>
+          </header>
+
+          {/* MAIN ROBOT TELEMETRY & STORY HUD */}
+          <div className="absolute inset-x-4 sm:inset-x-8 bottom-24 z-20 max-w-2xl pointer-events-none" style={{ direction: isArabic ? "rtl" : "ltr" }}>
+            <div className="glass-card rounded-3xl p-5 sm:p-6 border border-white/20 pointer-events-auto shadow-2xl space-y-4 fin">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div>
+                  <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 font-mono-code">
+                    {currentRobot?.landingYear} · {currentRobot?.planetName[lang]}
+                  </span>
+                  <h2 className="text-2xl sm:text-3xl font-black text-white mt-2 leading-tight">
+                    {currentRobot?.name[lang]}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-cyan-400 font-semibold mt-0.5">
+                    {currentRobot?.tagline[lang]}
+                  </p>
+                </div>
+
+                {/* Robot Avatar Image Click = Plays Voice-Over Story */}
+                <div
+                  onClick={() => onToggleStoryVoiceOver(currentRobot)}
+                  className={`relative w-14 h-14 rounded-2xl overflow-hidden cursor-pointer border-2 transition shrink-0 ${
+                    isCurrentStoryPlaying ? "transmitting-active border-amber-400 scale-105" : "border-white/30 hover:border-amber-400"
+                  }`}
+                  title={isArabic ? "اضغط الصورة لتشغيل قصة المركبة" : "Click image to play voice story"}
+                >
+                  <img src={currentRobot?.backgroundImage} alt={currentRobot?.name[lang]} className="w-full h-full object-cover" />
+                  {isCurrentStoryPlaying && (
+                    <div className="absolute inset-0 bg-amber-950/70 flex items-center justify-center">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Coordinates & Location HUD */}
+              <div className="space-y-1.5 text-xs text-slate-300 font-mono-code pt-1 border-t border-white/10">
+                <p className="flex items-center gap-2">
+                  <Compass size={13} className="text-cyan-400" />
+                  <span>{currentRobot?.coordinates[lang]}</span>
+                </p>
+                <p className="text-slate-400 leading-relaxed font-sans text-xs">
+                  {currentRobot?.missionRole[lang]}
+                </p>
+              </div>
+
+              {/* "LISTEN TO THE STORY" VOICE-OVER CONTROLLER */}
+              <div className="pt-2 flex items-center gap-3 flex-wrap">
+                <button
+                  onClick={() => onToggleStoryVoiceOver(currentRobot)}
+                  className={`rounded-full px-5 py-2.5 text-xs sm:text-sm font-extrabold flex items-center gap-2.5 shadow-xl transition ${
+                    isCurrentStoryPlaying
+                      ? "bg-amber-400 text-slate-950 scale-105"
+                      : "bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 hover:brightness-110"
+                  }`}
+                >
+                  {isCurrentStoryPlaying ? <Pause size={16} /> : <Play size={16} />}
+                  <span>{isCurrentStoryPlaying ? (isArabic ? "إيقاف القصة" : "Pause Story") : (isArabic ? "اسمع القصة" : "Listen to the Story")}</span>
+                </button>
+
+                {/* Subtitle / Script toggle */}
+                <button
+                  onClick={() => setShowScript(!showScript)}
+                  className="glass rounded-full px-3.5 py-2 text-xs font-bold flex items-center gap-1.5 hover:bg-white/20 text-slate-300"
+                >
+                  <FileText size={13} />
+                  <span>{showScript ? (isArabic ? "إخفاء النص" : "Hide Script") : (isArabic ? "نص القصة" : "Story Script")}</span>
+                </button>
+
+                {/* Waveform indicator */}
+                {isCurrentStoryPlaying && (
+                  <div className="ms-auto flex items-center gap-2">
+                    <WaveformVisualizer active={true} color="#f59e0b" count={14} height={20} />
+                  </div>
+                )}
+              </div>
+
+              {/* Synchronized Script Transcript Popup */}
+              {showScript && (
+                <div className="p-3.5 bg-black/60 rounded-xl border border-amber-400/30 text-xs text-slate-200 leading-relaxed fin max-h-36 overflow-y-auto">
+                  <p className="font-bold text-amber-300 mb-1 flex items-center gap-1.5 font-mono-code">
+                    <Radio size={12} /> {isArabic ? "نص الرواية المسجلة:" : "Audio Story Transcript:"}
+                  </p>
+                  <p className="italic">"{currentRobot?.storyTranscript[lang]}"</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* NAVIGATION CONTROLS (Next / Prev & Bottom Quick-Jump Timeline) */}
+          <div className="absolute inset-y-0 start-3 sm:start-5 z-20 flex items-center pointer-events-none">
+            <button
+              onClick={() => handleNavigate(currentIndex - 1)}
+              disabled={currentIndex === 0}
+              className={`glass w-11 h-11 rounded-full grid place-items-center pointer-events-auto transition shadow-2xl ${
+                currentIndex === 0 ? "opacity-30 cursor-not-allowed" : "hover:bg-white/25 hover:scale-110"
+              }`}
+              title={isArabic ? "المركبة السابقة" : "Previous Explorer"}
+            >
+              {isArabic ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
+            </button>
+          </div>
+
+          <div className="absolute inset-y-0 end-3 sm:end-5 z-20 flex items-center pointer-events-none">
+            <button
+              onClick={() => handleNavigate(currentIndex + 1)}
+              disabled={currentIndex === robots.length - 1}
+              className={`glass w-11 h-11 rounded-full grid place-items-center pointer-events-auto transition shadow-2xl ${
+                currentIndex === robots.length - 1 ? "opacity-30 cursor-not-allowed" : "hover:bg-white/25 hover:scale-110"
+              }`}
+              title={isArabic ? "المركبة التالية" : "Next Explorer"}
+            >
+              {isArabic ? <ArrowLeft size={20} /> : <ArrowRight size={20} />}
+            </button>
+          </div>
+
+          {/* BOTTOM QUICK-JUMP TIMELINE / DOCK */}
+          <div className="absolute bottom-4 inset-x-0 z-20 flex justify-center px-4 pointer-events-none">
+            <div className="glass px-3 py-2 rounded-2xl flex items-center gap-2 overflow-x-auto max-w-[94vw] pointer-events-auto border border-white/20 shadow-2xl">
+              {robots.map((r, idx) => (
+                <button
+                  key={r.id}
+                  onClick={() => handleNavigate(idx)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5 ${
+                    currentIndex === idx
+                      ? "accbg shadow-lg scale-105"
+                      : "hover:bg-white/15 text-slate-300"
+                  }`}
+                >
+                  <span className="font-mono-code text-[11px] opacity-80">{r.landingYear}</span>
+                  <span>{r.name[lang].split(" ")[0]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ============ MAIN APPLICATION CONTROLLER ============ */
+    function ForgottenExplorers() {
+      const [lang, setLang] = useState("ar"), [read, setRead] = useState(false);
+      
+      // Main App Mode: "intro" | "solar"
+      const [inIntro, setInIntro] = useState(true);
+
+      const [view, setView] = useState("solar"); // "solar" | "moon" | "mars"
+      const [warp, setWarp] = useState(false);
+      const [modal, setModal] = useState(null);
+      const [year, setYear] = useState(2026);
+      const [muted, setMuted] = useState(false);
+
+      // Quiz State
+      const [qi, setQi] = useState(0), [score, setScore] = useState(0), [pick, setPick] = useState(null), [done, setDone] = useState(false), [name, setName] = useState("");
+
+      // Dual-Audio State
+      const [isStoryVoPlaying, setIsStoryVoPlaying] = useState(false);
+      const [activeStoryVoId, setActiveStoryVoId] = useState(null);
+      const voAudioRef = useRef(null);
+
+      // Planet hover & Coming soon
+      const [hoveredPlanet, setHoveredPlanet] = useState(null);
+      const [comingSoonToast, setComingSoonToast] = useState(null);
+
+      const en = lang === "en";
+      const isArabic = lang === "ar";
+      const bn = (k) => (en ? BEN[k] : BODIES[k]?.n || k);
+      const labelRef = useRef(bn); labelRef.current = bn;
+
+      // Filter robots by planet (9 NASA Space Apps artifacts)
+      const moonRobots = useMemo(() => NSSDCA_DATA.filter((m) => m.planet === "moon"), []);
+      const marsRobots = useMemo(() => NSSDCA_DATA.filter((m) => m.planet === "mars"), []);
+
+      // Periodic telemetry pip
+      useEffect(() => {
+        const interval = setInterval(() => {
+          if (!muted && !isStoryVoPlaying && !inIntro) {
+            sfx.pip();
+          }
+        }, 3400);
+        return () => clearInterval(interval);
+      }, [muted, isStoryVoPlaying, inIntro]);
+
+      /* ============ AUDIO CONTROLS ============ */
+      const toggleMute = () => {
+        const next = !muted;
+        setMuted(next);
+        ambient(!next);
+        if (next) {
+          stopAllAudio();
+        }
+      };
+
+      const stopAllAudio = () => {
+        if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+        if (voAudioRef.current) {
+          voAudioRef.current.pause();
+          voAudioRef.current = null;
+        }
+        stopMarsWind();
+        stopRoverEngine(false);
+        stopStaticNoise();
+        setIsStoryVoPlaying(false);
+        setActiveStoryVoId(null);
+        setAudioDucking(false);
+      };
+
+      // Part 2: Human Voice-Over Track Controller
+      const handleToggleStoryVoiceOver = (robot) => {
+        if (muted) return;
+        stopAllAudio();
+
+        if (isStoryVoPlaying && activeStoryVoId === robot.id) return;
+
+        setIsStoryVoPlaying(true);
+        setActiveStoryVoId(robot.id);
+        setAudioDucking(true);
+
+        const audio = new Audio(robot.storyVoiceOverSrc);
+        voAudioRef.current = audio;
+
+        audio.onended = () => {
+          setIsStoryVoPlaying(false);
+          setActiveStoryVoId(null);
+          setAudioDucking(false);
+        };
+
+        audio.onerror = () => {
+          if ("speechSynthesis" in window) {
+            const utter = new SpeechSynthesisUtterance(robot.storyTranscript[lang]);
+            utter.lang = en ? "en-US" : "ar-SA";
+            utter.rate = 0.96;
+            utter.pitch = 1.05;
+            utter.onend = () => {
+              setIsStoryVoPlaying(false);
+              setActiveStoryVoId(null);
+              setAudioDucking(false);
+            };
+            window.speechSynthesis.speak(utter);
+          }
+        };
+
+        audio.play().catch(() => {
+          if ("speechSynthesis" in window) {
+            const utter = new SpeechSynthesisUtterance(robot.storyTranscript[lang]);
+            utter.lang = en ? "en-US" : "ar-SA";
+            utter.rate = 0.96;
+            utter.pitch = 1.05;
+            utter.onend = () => {
+              setIsStoryVoPlaying(false);
+              setActiveStoryVoId(null);
+              setAudioDucking(false);
+            };
+            window.speechSynthesis.speak(utter);
+          }
+        });
+      };
+
+      /* ============ PLANET PICK & WARP ============ */
+      const handlePlanetPick = (k) => {
+        if (k !== "mars" && k !== "moon") {
+          sfx.click();
+          setComingSoonToast(k);
+          setTimeout(() => setComingSoonToast(null), 3500);
+          return;
+        }
+
+        sfx.planet();
+        stopAllAudio();
+        setWarp(true);
+        setTimeout(() => {
+          setView(k);
+        }, 450);
+        setTimeout(() => setWarp(false), 1100);
+      };
+
+      const btn = "glass rounded-full px-4 py-2 text-xs sm:text-sm font-bold flex items-center gap-2 hover:bg-white/15 transition";
+
+      return (
+        <div
+          dir={en ? "ltr" : "rtl"}
+          className="fixed inset-0 overflow-hidden text-slate-100 select-none"
+          style={{
+            background: "radial-gradient(ellipse at 20% 10%, #2a1260 0, transparent 45%), radial-gradient(ellipse at 85% 90%, #0b3a5c 0, transparent 50%), #040711",
+            fontFamily: "'Tajawal','Segoe UI',sans-serif",
+            letterSpacing: read ? ".04em" : 0,
+            lineHeight: read ? 2.1 : undefined,
+            fontSize: read ? "1.08rem" : undefined
+          }}
+        >
+          {/* VIEW A: ORIGINAL SOLAR SYSTEM CANVAS (Active in background for seamless frame handoff) */}
+          {view === "solar" && (
+            <>
+              <Space
+                solar={true}
+                onPick={handlePlanetPick}
+                labelRef={labelRef}
+                setHoveredPlanet={setHoveredPlanet}
+              />
+
+              {warp && (
+                <div
+                  className="fixed inset-0 z-40 pointer-events-none"
+                  style={{ background: "radial-gradient(circle, #fff 0, #7cc4ff 12%, transparent 45%)", animation: "wp 1s ease-in forwards" }}
+                />
+              )}
+
+              {/* Header Nav & UI Controls (Fade in after intro concludes) */}
+              {!inIntro && (
+                <>
+                  <header className="fixed top-0 inset-x-0 z-20 p-3 flex items-center justify-between gap-2 flex-wrap fin">
+                    <div />
+                    <div className="flex gap-2 flex-wrap">
+                      <button className={btn} onClick={() => setLang(en ? "ar" : "en")}>
+                        <Languages size={15} /> {en ? "عربي" : "EN"}
+                      </button>
+                      <button className={btn} onClick={() => setRead(!read)} aria-pressed={read} title={isArabic ? "قراءة مريحة" : "Easy Reading"}>
+                        <Eye size={15} />
+                      </button>
+                      <button className={btn} onClick={() => { sfx.click(); setModal("time"); }}>
+                        <Clock size={15} /> <span className="hidden sm:inline">{isArabic ? "آلة الزمن" : "Timeline"}</span>
+                      </button>
+                      <button className={btn} onClick={() => { sfx.click(); setScore(0); setQi(0); setPick(null); setDone(false); setModal("quiz"); }}>
+                        <Trophy size={15} /> <span className="hidden sm:inline">{isArabic ? "الاختبار" : "Quiz"}</span>
+                      </button>
+                      <button className={btn} onClick={() => setModal("src")}>
+                        <Database size={15} /> <span className="hidden sm:inline">{isArabic ? "المصادر" : "Sources"}</span>
+                      </button>
+                      <button className={btn} onClick={toggleMute} aria-label="mute">
+                        {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+                      </button>
+                    </div>
+                  </header>
+
+                  {/* Canvas Hint */}
+                  <div className="fixed bottom-6 inset-x-0 z-10 text-center pointer-events-none px-4 fin">
+                    <h1 className="text-3xl sm:text-5xl font-extrabold" style={{ animation: "glow 4s infinite" }}>
+                      {isArabic ? "مستكشفون نسيهم الزمن" : "Forgotten Explorers"}
+                    </h1>
+                    <p className="mt-1 text-slate-300 text-sm sm:text-base">
+                      {isArabic ? "اضغط على القمر أو المريخ لاستكشاف المعدات المتروكة" : "Click The Moon or Mars to explore abandoned equipment"}
+                    </p>
+                  </div>
+
+                  {/* Hover Status */}
+                  {hoveredPlanet && (
+                    <div className="fixed bottom-20 inset-x-0 flex justify-center z-20 pointer-events-none px-4">
+                      <div className="glass px-4 py-1.5 rounded-full text-xs font-bold text-cyan-300 flex items-center gap-2 shadow-xl border border-cyan-400/30">
+                        <span>{hoveredPlanet.name}</span>
+                        {hoveredPlanet.k !== "mars" && hoveredPlanet.k !== "moon" && (
+                          <span className="bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full text-[10px] border border-amber-400/40">
+                            {isArabic ? "قريبًا | Coming Soon" : "Coming Soon"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* "Coming Soon" Toast for other planets */}
+                  {comingSoonToast && (
+                    <aside className="fixed top-20 inset-x-4 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 z-50 glass bg-[#0d1220]/95 p-5 rounded-3xl border border-amber-400/40 shadow-2xl fin text-center max-w-md">
+                      <p className="text-base font-extrabold text-amber-300 flex items-center justify-center gap-2">
+                        <Radio size={18} />
+                        <span>{bn(comingSoonToast)}: {isArabic ? "قريبًا | Coming Soon" : "Coming Soon"}</span>
+                      </p>
+                      <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                        {isArabic
+                          ? "هذا الجرم قيد المسح الأثري الفضائي لمهمات قادمة من تحدي تطبيقات الفضاء. استكشف القمر والمريخ الآن."
+                          : "This world is under archaeological survey for future Space Apps missions. Explore The Moon and Mars now."}
+                      </p>
+                      <div className="mt-4 flex justify-center gap-2">
+                        <button
+                          onClick={() => { setComingSoonToast(null); handlePlanetPick("moon"); }}
+                          className="accbg px-4 py-1.5 rounded-full text-xs font-bold shadow-md"
+                        >
+                          ⚪ {isArabic ? "استكشف القمر (4 مركبات)" : "Explore Moon (4 Artifacts)"}
+                        </button>
+                        <button
+                          onClick={() => { setComingSoonToast(null); handlePlanetPick("mars"); }}
+                          className="bg-red-600 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-md"
+                        >
+                          🔴 {isArabic ? "استكشف المريخ (5 مركبات)" : "Explore Mars (5 Artifacts)"}
+                        </button>
+                      </div>
+                    </aside>
+                  )}
+                </>
+              )}
+            </>
+          )}
+
+          {/* VIEW B: FULL-SCREEN IMMERSIVE ROBOT EXPLORER (MOON & MARS) */}
+          {view === "moon" && (
+            <PlanetaryRobotExplorer
+              planetKey="moon"
+              robots={moonRobots}
+              lang={lang}
+              onBackToSolar={() => { sfx.click(); stopAllAudio(); setView("solar"); }}
+              onToggleStoryVoiceOver={handleToggleStoryVoiceOver}
+              isStoryVoPlaying={isStoryVoPlaying}
+              activeStoryVoId={activeStoryVoId}
+            />
+          )}
+
+          {view === "mars" && (
+            <PlanetaryRobotExplorer
+              planetKey="mars"
+              robots={marsRobots}
+              lang={lang}
+              onBackToSolar={() => { sfx.click(); stopAllAudio(); setView("solar"); }}
+              onToggleStoryVoiceOver={handleToggleStoryVoiceOver}
+              isStoryVoPlaying={isStoryVoPlaying}
+              activeStoryVoId={activeStoryVoId}
+            />
+          )}
+
+          {/* ============ PART 1: CINEMATIC OPENING INTRO SEQUENCE LAYER ============ */}
+          {inIntro && (
+            <CinematicMarsIntro
+              lang={lang}
+              muted={muted}
+              onComplete={() => {
+                setInIntro(false);
+                setView("solar");
+              }}
+              onSkip={() => {
+                setInIntro(false);
+                setView("solar");
+              }}
+            />
+          )}
+
+              {/* TIME MACHINE MODAL */}
+              {modal === "time" && (
+                <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md grid place-items-center p-4" role="dialog">
+                  <div className="glass bg-[#0d1220] rounded-3xl p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto relative border border-white/20">
+                    <button onClick={() => setModal(null)} className="absolute top-4 end-4 glass p-1.5 rounded-full hover:bg-white/20">
+                      <X size={18} />
+                    </button>
+                    <h2 className="text-xl font-extrabold flex items-center gap-2 text-cyan-300">
+                      <Clock size={20} />
+                      <span>{isArabic ? "آلة الزمن: الآثار الفضائية حتى عام" : "Time Machine: Space Artifacts up to"} {year}</span>
+                    </h2>
+                    <input
+                      type="range"
+                      min="1960"
+                      max="2026"
+                      value={year}
+                      onChange={(e) => setYear(+e.target.value)}
+                      className="w-full mt-4 h-2 bg-slate-800 rounded-lg cursor-pointer accent-cyan-400"
+                    />
+                    <div className="flex justify-between text-xs font-mono-code text-slate-400 mt-1">
+                      <span>1960</span>
+                      <span className="font-bold text-cyan-300">{year}</span>
+                      <span>2026</span>
+                    </div>
+
+                    <div className="mt-4 space-y-2 max-h-72 overflow-y-auto pr-1">
+                      {NSSDCA_DATA.filter((m) => parseInt(m.landingYear.substring(0, 4)) <= year).map((m) => (
+                        <div key={m.id} className="p-3 bg-slate-900/70 rounded-xl border border-slate-700/60 flex items-center justify-between gap-3">
+                          <div>
+                            <span className="text-xs font-mono-code text-amber-400 font-bold">{m.landingYear}</span>
+                            <h4 className="font-bold text-sm text-white">{m.name[lang]}</h4>
+                            <p className="text-xs text-slate-400">{m.coordinates[lang]}</p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setModal(null);
+                              setView(m.planet);
+                            }}
+                            className="accbg px-3 py-1 rounded-full text-xs font-bold"
+                          >
+                            {isArabic ? "مشاهدة" : "View"}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SOURCES MODAL */}
+              {modal === "src" && (
+                <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md grid place-items-center p-4" role="dialog">
+                  <div className="glass bg-[#0d1220] rounded-3xl p-6 w-full max-w-xl relative border border-white/20 space-y-4">
+                    <button onClick={() => setModal(null)} className="absolute top-4 end-4 glass p-1.5 rounded-full hover:bg-white/20">
+                      <X size={18} />
+                    </button>
+                    <h3 className="text-xl font-extrabold flex items-center gap-2 text-cyan-300">
+                      <Database size={20} />
+                      <span>{isArabic ? "المصادر الرسمية وأرشيف NSSDCA" : "Official Sources & NSSDCA Archive"}</span>
+                    </h3>
+                    <ul className="space-y-2 text-xs font-mono-code pt-1">
+                      <li>
+                        <a href="https://nssdc.gsfc.nasa.gov/" target="_blank" rel="noreferrer" className="text-cyan-400 hover:underline flex items-center gap-1.5">
+                          <ExternalLink size={12} />
+                          <span>NASA Space Science Data Coordinated Archive (NSSDCA)</span>
+                        </a>
+                      </li>
+                      <li>
+                        <a href="https://images.nasa.gov/" target="_blank" rel="noreferrer" className="text-cyan-400 hover:underline flex items-center gap-1.5">
+                          <ExternalLink size={12} />
+                          <span>NASA Image and Video Library</span>
+                        </a>
+                      </li>
+                      <li>
+                        <a href="https://lroc.asu.edu/" target="_blank" rel="noreferrer" className="text-cyan-400 hover:underline flex items-center gap-1.5">
+                          <ExternalLink size={12} />
+                          <span>Lunar Reconnaissance Orbiter Camera (Apollo/Surveyor Sites)</span>
+                        </a>
+                      </li>
+                    </ul>
+                    <p className="text-[11px] text-slate-400 pt-2 border-t border-white/10">
+                      NASA Space Apps Challenge 2026 · "Abandoned but not Forgotten".
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* QUIZ MODAL */}
+              {modal === "quiz" && (
+                <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md grid place-items-center p-4" role="dialog">
+                  <div className="glass bg-[#0d1220] rounded-3xl p-6 w-full max-w-xl relative border border-white/20">
+                    <button onClick={() => setModal(null)} className="absolute top-4 end-4 glass p-1.5 rounded-full hover:bg-white/20">
+                      <X size={18} />
+                    </button>
+
+                    {!done ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-lg font-extrabold flex items-center gap-2 text-amber-300">
+                            <Trophy size={18} />
+                            <span>{isArabic ? "اختبار آثار الفضاء 2026" : "Space Archaeology Quiz"}</span>
+                          </h3>
+                          <span className="text-xs font-mono-code text-slate-400">{qi + 1} / 5 · {score}</span>
+                        </div>
+
+                        <p className="text-base font-bold text-slate-100 pt-2 leading-relaxed" dir="rtl">
+                          {["كم رحلة جوية أنجزتها مروحية إنجينويتي على المريخ؟", "ما الذي استعاده رواد أبولو 12 من سيرفيور 3؟", "ما اسم الروفر الصغير الذي هبط مع باثفايندر في 1997؟", "ما الجهاز الذي ما زال يعكس أشعة ليزر الأرض من القمر؟", "ما الذي أوقف مسبار إنسايت في 2022؟"][qi]}
+                        </p>
+
+                        <div className="space-y-2 pt-2" dir="rtl">
+                          {[
+                            ["72 رحلة جوية ناجحة", "5 رحلات فقط", "150 رحلة"],
+                            ["كاميرتها التلفزيونية", "عجلاتها الفولاذية", "لوحها الشمسي"],
+                            ["سوجورنر", "بيرسيفيرانس", "كيوريوسيتي"],
+                            ["العواكس الليزرية السلبية ألسيب", "محركات الصعود", "بطاريات النسر"],
+                            ["تراكم الغبار على الألواح الشمسية", "عاصفة ثلجية", "اصطدام نيزكي"]
+                          ][qi].map((opt, oIdx) => {
+                            const isCorrect = pick !== null && oIdx === 0;
+                            const isWrong = pick === oIdx && oIdx !== 0;
+                            return (
+                              <button
+                                key={oIdx}
+                                onClick={() => {
+                                  if (pick !== null) return;
+                                  setPick(oIdx);
+                                  if (oIdx === 0) setScore((s) => s + 1);
+                                  if (oIdx === 0) sfx.win(); else sfx.bad();
+                                }}
+                                className={`w-full text-start p-3 rounded-xl border text-sm font-medium transition ${
+                                  isCorrect ? "bg-emerald-600/40 border-emerald-400 text-white" : isWrong ? "bg-red-600/40 border-red-400 text-white" : "bg-slate-900/60 border-slate-700/80 hover:bg-slate-800 text-slate-200"
+                                }`}
+                              >
+                                {opt}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {pick !== null && (
+                          <button
+                            onClick={() => {
+                              if (qi >= 4) { setDone(true); sfx.win(); } else { setQi(qi + 1); setPick(null); }
+                            }}
+                            className="w-full accbg py-2.5 rounded-xl font-bold mt-4 shadow-lg"
+                          >
+                            {qi >= 4 ? (isArabic ? "عرض النتيجة والشهادة" : "Show Results") : (isArabic ? "السؤال التالي ←" : "Next →")}
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 space-y-4">
+                        <Award size={64} className="mx-auto text-amber-400 animate-bounce" />
+                        <h3 className="text-2xl font-black text-white">
+                          {score >= 3 ? (isArabic ? "مبروك! مستكشف آثار الفضاء المعتمد" : "Certified Space Archaeologist") : (isArabic ? "حاول مرة أخرى" : "Try again")}
+                        </h3>
+                        <p className="text-sm text-slate-300">{score} / 5</p>
+                        {score >= 3 && (
+                          <div className="space-y-3 pt-2">
+                            <input
+                              type="text"
+                              value={name}
+                              onChange={(e) => setName(e.target.value)}
+                              placeholder={isArabic ? "اكتب اسمك للشهادة" : "Enter your name"}
+                              className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-center font-bold text-white focus:outline-none focus:border-cyan-400"
+                            />
+                            <button
+                              onClick={() => {
+                                const c = document.createElement("canvas"); c.width = 1200; c.height = 800; const g = c.getContext("2d");
+                                const bg = g.createLinearGradient(0, 0, 1200, 800); bg.addColorStop(0, "#0b1226"); bg.addColorStop(1, "#040711");
+                                g.fillStyle = bg; g.fillRect(0, 0, 1200, 800); g.strokeStyle = "#38bdf8"; g.lineWidth = 6; g.strokeRect(30, 30, 1140, 740);
+                                g.fillStyle = "#fff"; g.textAlign = "center"; g.font = "800 52px Tajawal, sans-serif";
+                                g.fillText("شهادة مستكشف آثار الفضاء الرسمية", 600, 220);
+                                g.font = "800 60px Tajawal, sans-serif"; g.fillStyle = "#38bdf8"; g.fillText(name || "Space Explorer", 600, 390);
+                                g.fillStyle = "#facc15"; g.font = "700 34px Tajawal, sans-serif"; g.fillText(`${score} / 5 - NASA Space Apps 2026`, 600, 480);
+                                const a = document.createElement("a"); a.href = c.toDataURL("image/png"); a.download = "Certificate.png"; a.click();
+                              }}
+                              className="w-full accbg py-3 rounded-xl font-extrabold flex items-center justify-center gap-2 shadow-lg"
+                            >
+                              <Download size={16} />
+                              <span>{isArabic ? "تحميل الشهادة الرسمية (PNG)" : "Download Certificate"}</span>
+                            </button>
+                          </div>
+                        )}
+                        <button onClick={() => { setQi(0); setScore(0); setPick(null); setDone(false); }} className={btn + " mx-auto mt-2"}>
+                          <Rocket size={16} /> {isArabic ? "أعد الاختبار" : "Retake"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<ForgottenExplorers />);
+  </script>
+</body>
+</html>

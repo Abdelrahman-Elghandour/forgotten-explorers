@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>مستكشفون نسيهم الزمن | Forgotten Explorers</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    html, body, #root {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #05070d;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script>
+    // Browser localStorage polyfill for window.storage so uploaded photos and preferences persist locally
+    if (!window.storage) {
+      window.storage = {
+        get: async (key) => {
+          try {
+            const val = localStorage.getItem("fe_" + key);
+            return val !== null ? { value: val } : null;
+          } catch (e) {
+            return null;
+          }
+        },
+        set: async (key, val) => {
+          try {
+            localStorage.setItem("fe_" + key, val);
+          } catch (e) {}
+        }
+      };
+    }
+  </script>
+
+  <script type="text/babel" data-presets="react">
+    const { useState, useMemo, useRef, useEffect } = React;
+
+    /* ============ INLINE LUCIDE ICONS ============ */
+    const Icon = ({ size = 24, className = "", children }) => (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+      >
+        {children}
+      </svg>
+    );
+
+    const Volume2 = (p) => <Icon {...p}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></Icon>;
+    const VolumeX = (p) => <Icon {...p}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></Icon>;
+    const Square = (p) => <Icon {...p}><rect width="18" height="18" x="3" y="3" rx="2"/></Icon>;
+    const Rocket = (p) => <Icon {...p}><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></Icon>;
+    const Clock = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></Icon>;
+    const Trophy = (p) => <Icon {...p}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></Icon>;
+    const Radio = (p) => <Icon {...p}><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></Icon>;
+    const Sun = (p) => <Icon {...p}><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></Icon>;
+    const Camera = (p) => <Icon {...p}><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></Icon>;
+    const Settings = (p) => <Icon {...p}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></Icon>;
+    const X = (p) => <Icon {...p}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></Icon>;
+    const Award = (p) => <Icon {...p}><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></Icon>;
+    const ArrowRight = (p) => <Icon {...p}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></Icon>;
+    const Languages = (p) => <Icon {...p}><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></Icon>;
+    const Download = (p) => <Icon {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></Icon>;
+    const Lightbulb = (p) => <Icon {...p}><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></Icon>;
+    const Eye = (p) => <Icon {...p}><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></Icon>;
+    const Database = (p) => <Icon {...p}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></Icon>;
+    const Wind = (p) => <Icon {...p}><path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/></Icon>;
+
+/* ============ DATA ============ */
+const BODIES = {
+  mars:  { n: "المريخ", e: "🔴", c: "#c85a32", bg: "from-[#2a1008] to-[#090d16]", fact: "يوم المريخ يطول 24 ساعة و37 دقيقة، وجاذبيته أقل من ثلث جاذبية الأرض." },
+  moon:  { n: "القمر", e: "⚪", c: "#a1a8b8", bg: "from-[#1c2030] to-[#090d16]", fact: "آثار الأقدام على القمر قد تبقى ملايين السنين لأنه لا توجد رياح تمحوها." },
+  venus: { n: "الزهرة", e: "🟡", c: "#d4a359", bg: "from-[#2b2008] to-[#090d16]", fact: "حرارة سطح الزهرة نحو 465°م، أسخن من أي كوكب آخر." },
+  titan: { n: "تيتان والأقمار الخارجية", e: "🪐", c: "#e07a5f", bg: "from-[#2b140c] to-[#090d16]", fact: "على تيتان بحيرات وأنهار، لكنها من الميثان السائل لا من الماء." },
+  deep:  { n: "الفضاء العميق", e: "🌌", c: "#8b5cf6", bg: "from-[#160f2e] to-[#090d16]", fact: "فوياجر 1 أبعد جسم صنعه الإنسان، وفي 18 نوفمبر 2026 يبعد عنا يومًا ضوئيًا كاملًا (نحو 25.9 مليار كم)." },
+};
+
+// parts order: power, science, mobility, comms — each "how|why"
+const M = [
+  { id: "opp", n: "أوبورتيونيتي", b: "mars", y: 2004, end: 2018, x: 30, t: 62, tag: "الناجية من العواصف",
+    diary: "أنا أوبورتيونيتي. صُمّمت لأعيش 90 يومًا فقط، لكنني بقيت 14 عامًا أتجول في سهل ميريديان. في 2018 غطّتني عاصفة غبار ضخمة حجبت الشمس عن ألواحي، فنمت بهدوء. آخر رسالة لي كانت: بطاريتي منخفضة والظلام يزداد.",
+    s: ["يوليو 2003", "10 يونيو 2018", "14 سنة (المخطط 90 يومًا)", "45.16 كم", "اكتشاف أدلة قوية على وجود مياه قديمة"],
+    p: ["ألواح شمسية تحوّل الضوء إلى كهرباء|عاصفة الغبار حجبت الشمس فنفدت الطاقة", "كاميرات ومطياف يحلّل الصخور|وجدت كريات الهيماتيت التي تكوّنت في الماء", "ست عجلات تتسلق الكثبان|بقيت تعمل لسنوات رغم الغبار", "هوائي عالي الكسب يرسل للأرض|لم يعد يتلقى أوامرنا بعد العاصفة"] },
+  { id: "spi", n: "سبيريت", b: "mars", y: 2004, end: 2010, x: 62, t: 30, tag: "التوأم العالق",
+    diary: "أنا سبيريت، توأم أوبورتيونيتي. علقت عجلاتي في رمال ناعمة قرب فوهة تروي. حاولوا إنقاذي شهورًا، ثم جاء الشتاء البارد فلم تكفِ الطاقة لتدفئتي. ما زلت أعمل كمحطة ثابتة أنقل ما أراه.",
+    s: ["يونيو 2003", "22 مارس 2010", "6 سنوات (المخطط 90 يومًا)", "7.7 كم", "وجدت سيليكا نقية دليلًا على ينابيع حارة قديمة"],
+    p: ["ألواح شمسية|الشتاء وزاوية الشمس قلّلا الطاقة", "كاميرا بانورامية ومطياف|كشفت تربة غنية بالسيليكا", "عجلة تالفة تسحب الرمل|علقت في رمال ناعمة", "هوائي رئيسي|سكنت بعد نفاد الدفء والطاقة"] },
+  { id: "vik", n: "فايكنج 1 و 2", b: "mars", y: 1976, end: 1982, x: 75, t: 70, tag: "رواد البحث عن الحياة",
+    diary: "نحن فايكنج. في 1976 هبطنا على المريخ وأرسلنا أول صور ملونة من سطحه. اختبرنا التربة بحثًا عن الميكروبات، وكانت النتائج لغزًا ما زال العلماء يناقشونه.",
+    s: ["1975", "1982 (فايكنج 1)", "6 سنوات (المخطط 90 يومًا)", "ثابت في مكانه", "أول صور ملونة وأول تجارب حياة على المريخ"],
+    p: ["مولدات نظائر مشعة RTG|تضاءلت طاقتها تدريجيًا", "مختبر بيولوجي صغير وكاميرات|نتائجه لم تحسم وجود الحياة", "ذراع آلية تجمع التربة|ثابتان فلا عجلات", "هوائي للمدار ثم الأرض|فقد الاتصال بعد خطأ برمجي"] },
+  { id: "ins", n: "إنسايت", b: "mars", y: 2018, end: 2022, x: 45, t: 45, tag: "المنصت للزلازل",
+    diary: "أنا إنسايت. لم أتحرك قط، فقد وُضعت لأنصت إلى قلب المريخ. سجّلت مئات الزلازل المريخية، وعرفنا منها حجم نواة الكوكب. تراكم الغبار على ألواحي، فأطفأت أجهزتي واحدًا بعد الآخر.",
+    s: ["مايو 2018", "15 ديسمبر 2022", "4 سنوات (المخطط سنتان)", "ثابت في مكانه", "رصد أكثر من 1300 زلزال مريخي"],
+    p: ["ألواح شمسية دائرية|غطاها الغبار تدريجيًا", "جهاز SEIS لقياس الزلازل|كشف حجم النواة وطبقات الكوكب", "ذراع آلية وضعت الأجهزة على الأرض|أنهت مهمتها بنجاح", "هوائيات للإرسال|توقفت حين نفدت الطاقة"] },
+  { id: "pat", n: "باثفايندر وسوجورنر", b: "mars", y: 1997, end: 1997, x: 20, t: 38, tag: "ثورة الروفر الصغير",
+    diary: "أنا باثفايندر، وبداخلي صديقي الصغير سوجورنر بحجم ميكروويف. هبطنا بالوسائد الهوائية وتجولنا في وادي آريس. وفي 1997 صمتُّ بعد أن انتهت بطاريتي.",
+    s: ["ديسمبر 1996", "27 سبتمبر 1997", "3 أشهر (المخطط شهر)", "حوالي 100 متر", "أثبتت أن الروفرات الصغيرة الرخيصة تنجح"],
+    p: ["ألواح شمسية صغيرة|البطارية لم تتحمل البرد", "مطياف أشعة ألفا لتحليل الصخور|حلّل صخرة اسمها يوجي", "ست عجلات صغيرة|قطعت مسافات قصيرة حول المحطة", "هوائي في المحطة|توقف بعد نفاد البطارية"] },
+  { id: "eag", n: "أبولو 11 «النسر»", b: "moon", y: 1969, end: 1969, x: 55, t: 50, tag: "أول خطوة",
+    diary: "أنا مرحلة الهبوط من مركبة النسر. على بحر السكون وقف إنسانان لأول مرة على عالم آخر. حين انتهت الرحلة تركتني هنا، أحرس آثار أقدام لن تمحوها رياح.",
+    s: ["16 يوليو 1969", "21 يوليو 1969", "21 ساعة على السطح", "384,400 كم من الأرض", "أول هبوط بشري على القمر"],
+    p: ["بطاريات تعمل لساعات قليلة|صُمّمت ليوم واحد فقط", "كاميرا وتجارب علمية وعاكس ليزر|ما زال العلماء يقيسون به المسافة للقمر", "محرك هبوط يعمل بالصاروخ|بقيت مرحلته على القمر وصعد الباقي", "هوائي S-band|انتهى استخدامه بانتهاء المهمة"] },
+  { id: "sur", n: "سيرفيور 3", b: "moon", y: 1967, end: 1967, x: 25, t: 70, tag: "زارها رواد أبولو 12",
+    diary: "أنا سيرفيور 3. هبطت قبل البشر بسنتين، ثم زارني رواد أبولو 12 وأخذوا مني كاميرتي لتُدرَس على الأرض. أنا أقدم صديق للإنسان على القمر.",
+    s: ["أبريل 1967", "3 مايو 1967", "أسبوعان", "ثابت في مكانه", "أعاد آلاف الصور وحفر تربة القمر"],
+    p: ["ألواح شمسية وبطارية|لم تتحمل ليل القمر البارد", "كاميرا تلفزيونية|عادت إلى الأرض مع رواد أبولو 12", "ذراع حفر|حفرت خندقًا لقياس صلابة التربة", "هوائي مسطح|سكت مع الليل القمري"] },
+  { id: "lun", n: "لونوخود 1", b: "moon", y: 1970, end: 1971, x: 70, t: 28, tag: "رائد التحكم عن بُعد",
+    diary: "أنا لونوخود 1، أول روفر يجوب عالمًا آخر بتوجيه من الأرض. سائقي كانوا مهندسين في الاتحاد السوفييتي. ظللت أتحرك 11 شهرًا حتى نفد وقودي الدافئ.",
+    s: ["نوفمبر 1970", "14 سبتمبر 1971", "11 شهرًا (المخطط 3 أشهر)", "10.5 كم", "أول روفر يُدار عن بعد على القمر"],
+    p: ["ألواح شمسية وسخان بنظائر|توقف السخان فتجمدت الأجهزة", "كاميرات ومطياف أشعة X|حلّل تربة القمر", "8 عجلات مستقلة|قطع كيلومترات على سطح وعر", "هوائي حلزوني|لم يردّ بعد سبتمبر 1971"] },
+  { id: "ven", n: "مارينر والزهرة", b: "venus", y: 1962, end: 1974, x: 50, t: 50, tag: "نظرة أولى على كوكب جحيمي",
+    diary: "نحن مارينر 2 ثم 10. مررنا قرب الزهرة وكشفنا أن حرارتها عالية جدًا. تحت السحب لا واحة جميلة بل فرن ضخم. وبعدنا هبطت مسابير فينيرا السوفييتية وعاشت دقائق قليلة فقط.",
+    s: ["1962 و1973", "1963 و1975", "أشهر قليلة لكل مسبار", "عبور سريع قرب الكوكب", "قياس حرارة الزهرة وأول زيارة ناجحة لكوكب آخر"],
+    p: ["ألواح شمسية|الشمس القوية والحرارة أنهكت الأجهزة", "مقياس إشعاع وكاميرا|كشفا السحب والحرارة العالية", "لا عجلات، مسبار عابر|لم يهبط على السطح", "هوائي موجه نحو الأرض|انتهى بعد نفاد وقود التوجيه"] },
+  { id: "huy", n: "هويجنز على تيتان", b: "titan", y: 2005, end: 2005, x: 40, t: 60, tag: "متجمد على عالم جليدي",
+    diary: "أنا هويجنز، مسبار أوروبي حملتني مركبة ناسا كاسيني. نزلت بالمظلة ساعتين ونصفًا عبر ضباب برتقالي كثيف إلى تيتان. وبعد الهبوط أرسلت نحو 72 دقيقة من السطح، ثم غابت كاسيني خلف الأفق فانقطع الاتصال، وسكتُّ في البرد الشديد.",
+    s: ["أكتوبر 1997 (مع كاسيني)", "14 يناير 2005", "نزول 2.5 ساعة + نحو 72 دقيقة على السطح", "أكثر من مليار كم عن الأرض", "الهبوط الوحيد على عالم في المجموعة الشمسية الخارجية"],
+    p: ["بطاريات كيميائية|سعتها لساعات فقط، لا ألواح شمسية", "مطياف الغازات وكاميرات|كشفت الميثان والتربة الرطبة", "مظلات ثم هبوط على السطح|ثابت بعد الهبوط", "ينقل عبر مسبار كاسيني|غاب كاسيني خلف الأفق فانقطع الاتصال"] },
+  { id: "voy", n: "فوياجر 1 و 2", b: "deep", y: 1977, end: 2026, x: 80, t: 20, tag: "رسل السجل الذهبي",
+    diary: "نحن فوياجر. انطلقنا في 1977 ومعنا أسطوانة ذهبية تحمل أصواتًا وصورًا من الأرض. نمر الآن في الفضاء بين النجوم، أبعد من أي أحد. ما زلنا نهمس إلى الأرض بقدر ما تسمح الطاقة. وفي 18 نوفمبر 2026 يصبح فوياجر 1 على بعد يوم ضوئي كامل، فتحتاج إشارته 24 ساعة لتصل إليكم.",
+    s: ["1977", "ما زالا يرسلان", "نحو 49 سنة (المخطط 5 سنوات)", "فوياجر 1: نحو 25.9 مليار كم (يوم ضوئي) في 18 نوفمبر 2026", "أول مسبار يدخل الفضاء بين النجمي (2012)"],
+    p: ["مولدات نظائر RTG تفقد قليلًا من قدرتها كل عام|يطفئ المهندسون أجهزة ليستمرا", "كاميرات ومقاييس مجال مغناطيسي|قاسا حدود فقاعة الشمس", "بلا عجلات، محركات توجيه صغيرة|وقودها يقلّ تدريجيًا", "هوائي ضخم ثابت نحو الأرض|الإشارة ضعيفة جدًا الآن"] },
+  { id: "kep", n: "تلسكوب كبلر", b: "deep", y: 2009, end: 2018, x: 25, t: 75, tag: "صائد الكواكب",
+    diary: "أنا كبلر. حدّقت في نجوم كثيرة أبحث عن ومضات خافتة حين يعبر كوكب أمامها. وجدت آلاف الكواكب خارج المجموعة الشمسية. وحين نفد وقودي أُوقفت في مداري حول الشمس.",
+    s: ["مارس 2009", "30 أكتوبر 2018", "9.5 سنوات (المخطط 3.5)", "مدار حول الشمس", "اكتشف أكثر من 2600 كوكب خارج المجموعة الشمسية"],
+    p: ["ألواح شمسية ثابتة|لم تتأثر، لكن الوقود نفد", "عدسة ضخمة وكاشف ضوء|قاس تغير سطوع النجوم بدقة", "عجلات تفاعل للتوجيه|تعطلت اثنتان فاستُخدمت الشمس للتوازن", "هوائي إرسال البيانات|أُغلق عند نفاد وقود التوجيه"] },
+];
+
+const PART_META = [
+  { k: "الطاقة", ic: Sun, pos: [20, 25] }, { k: "الأدوات العلمية", ic: Camera, pos: [78, 25] },
+  { k: "الحركة والذراع", ic: Settings, pos: [25, 78] }, { k: "الاتصال بالأرض", ic: Radio, pos: [78, 78] },
+];
+
+const QUIZ = [
+  { q: "كم عامًا عاشت أوبورتيونيتي رغم أنها صُمّمت لـ90 يومًا؟", o: ["نحو 14 عامًا", "5 أعوام", "30 عامًا"], a: 0 },
+  { q: "ما الذي أوقف إنسايت في النهاية؟", o: ["انفجار", "غبار على الألواح الشمسية", "عاصفة ثلجية"], a: 1 },
+  { q: "على أي جرم هبط مسبار هويجنز؟", o: ["تيتان", "الزهرة", "القمر"], a: 0 },
+  { q: "ما الذي تحمله فوياجر ليراه من يجدها؟", o: ["مرآة", "أسطوانة ذهبية", "خريطة كنز"], a: 1 },
+  { q: "ماذا اكتشف تلسكوب كبلر؟", o: ["مذنبات", "آلاف الكواكب خارج المجموعة الشمسية", "حياة على المريخ"], a: 1 },
+];
+
+/* ============ SOUND (Web Audio) ============ */
+let ctx, amb;
+const ac = () => { ctx ||= new (window.AudioContext || window.webkitAudioContext)(); if (ctx.state !== "running") ctx.resume(); return ctx; };
+function tone(f, d = 0.15, type = "sine", t0 = 0, vol = 0.12, f2) {
+  try {
+    const a = ac(), o = a.createOscillator(), g = a.createGain(), t = a.currentTime + t0;
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t + d);
+  } catch (e) {}
+}
+const sfx = {
+  click: () => tone(880, 0.1, "square", 0, 0.06, 1320),
+  planet: () => { tone(110, 1, "sawtooth", 0, 0.07, 440); tone(220, 1, "sine", 0.05, 0.09, 880); },
+  win: () => [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.25, "triangle", i * 0.14, 0.14)),
+  bad: () => tone(200, 0.3, "sawtooth", 0, 0.08, 100),
+};
+function ambient(on) {
+  try {
+    const a = ac();
+    if (on && !amb) {
+      const g = a.createGain(); g.gain.value = 0.03;
+      const o1 = a.createOscillator(), o2 = a.createOscillator(), l = a.createOscillator(), lg = a.createGain();
+      o1.frequency.value = 55; o2.type = "triangle"; o2.frequency.value = 82.4; l.frequency.value = 0.12; lg.gain.value = 0.015;
+      l.connect(lg).connect(g.gain); o1.connect(g); o2.connect(g); g.connect(a.destination);
+      [o1, o2, l].forEach((o) => o.start()); amb = { g, os: [o1, o2, l] };
+    } else if (!on && amb) { amb.os.forEach((o) => o.stop()); amb.g.disconnect(); amb = null; }
+  } catch (e) {}
+}
+
+/* ============ EXTRA DATA: English, lessons, UI strings ============ */
+const EN = { opp: ["Opportunity", "The dust-storm survivor"], spi: ["Spirit", "The trapped twin"], vik: ["Viking 1 & 2", "Pioneers of the search for life"], ins: ["InSight", "The Marsquake listener"], pat: ["Pathfinder & Sojourner", "The micro-rover revolution"], eag: ["Apollo 11 'Eagle'", "The first footprint"], sur: ["Surveyor 3", "Visited by Apollo 12"], lun: ["Lunokhod 1", "The remote-control pioneer"], ven: ["Mariner & Venus", "A first look at a hellish world"], huy: ["Huygens on Titan", "Frozen on an icy world"], voy: ["Voyager 1 & 2", "Golden Record messengers"], kep: ["Kepler Telescope", "The planet hunter"] };
+const BEN = { mars: "Mars", moon: "The Moon", venus: "Venus", titan: "Titan & outer moons", deep: "Deep space" };
+const SOLAR = ["opp", "spi", "ins", "pat"];
+const LESSON = {
+  opp: ["الغبار عدو الطاقة الشمسية. قواعد المريخ القادمة تحتاج ألواحًا تُنظَّف ذاتيًا أو طاقة نووية صغيرة.", "Dust is solar power's enemy. Future Mars bases need self-cleaning panels or small nuclear power."],
+  spi: ["التضاريس الناعمة فخ. تُدرَّب مركبات اليوم على تجنب الرمال قبل الدخول فيها.", "Soft terrain is a trap. Modern rovers are taught to avoid sand before driving into it."],
+  vik: ["أسئلة الحياة تحتاج أدوات أدق. مهمات القادمة تجلب عينات إلى الأرض لتُفحص بمعامل كاملة.", "Life questions need better tools. Next missions bring samples home for full labs."],
+  ins: ["الاستماع إلى باطن الكوكب يساعد على معرفة أين نبني بأمان.", "Listening inside a planet helps decide where it is safe to build."],
+  pat: ["الصغير الرخيص قد ينجح. فكرة الروفر الصغير تعود في مهمات الاستكشاف الحديثة.", "Small and cheap can work. The micro-rover idea lives on in modern exploration."],
+  eag: ["مواقع أبولو تراث إنساني. أرتميس ستعود إلى القمر وعلينا حمايتها.", "Apollo sites are human heritage. Artemis returns to the Moon and must protect them."],
+  sur: ["رؤية معدات بقيت سنوات على القمر علّمتنا كيف تتأثر المواد بالإشعاع والغبار.", "Seeing hardware left for years taught us how radiation and dust age materials."],
+  lun: ["التحكم عن بُعد بتأخير الإشارة هو أساس قيادة الروفرات اليوم.", "Driving with signal delay is the basis of rover driving today."],
+  ven: ["حرارة الزهرة تحتاج إلكترونيات تتحمل الجحيم، وهي أحد حدود التقنية القادمة.", "Venus needs electronics that survive hell — a technology frontier."],
+  huy: ["الهبوط على أبعد عالم جليدي يفتح الباب لمهمات إلى أقمار المشتري وزحل.", "Landing on a distant icy world opens the door to moons of Jupiter and Saturn."],
+  voy: ["الطاقة النووية الصغيرة تجعل الرحلات الطويلة ممكنة، ومعها فكرة رسالة للمستقبل.", "Small nuclear power enables long journeys, and a message for the future."],
+  kep: ["وجود كواكب كثيرة يعني أن السؤال التالي: هل في أحدها حياة؟", "So many planets raises the next question: is anyone living on one?"],
+};
+const SL = { ar: ["تاريخ الإطلاق", "آخر اتصال", "العمر مقابل المخطط", "المسافة", "أهم اكتشاف"], en: ["Launch", "Last contact", "Lifespan vs plan", "Distance", "Key discovery"] };
+const T = {
+  ar: { title: "مستكشفون نسيهم الزمن", sub: "مركبات تركناها في الفضاء، وكل واحدة عندها قصة تحكيها لك.", enter: "ادخل الفضاء", hint: "اضغط على أي كوكب أو قمر للسفر إليه", back: "المجموعة الشمسية", time: "آلة الزمن", quiz: "الاختبار", diary: "المذكرات", blue: "التفكيك", sim: "المحاكي", lesson: "الحدود التالية", listen: "استمع للمذكرات", stop: "إيقاف", last: "آخر رسالة", src: "المصادر", dust: "كمية الغبار على الألواح", power: "الطاقة المتبقية", how: "كيف عمل؟", why: "لماذا صمت؟", tap: "اضغط على أحد المكونات", lm1: "بطاريتي منخفضة…", lm2: "الأجهزة تنطفئ واحدًا واحدًا.", lm3: "شكرًا لأنك سمعت قصتي.", get: "حمّل الشهادة", name: "اكتب اسمك", read: "قراءة مريحة", srcNote: "تأكد من شروط الاستخدام لكل صورة قبل نشرها.", lesNote: "ماذا علّمتنا للمهمة القادمة؟" },
+  en: { title: "Forgotten Explorers", sub: "Spacecraft we left behind — each has a story to tell you.", enter: "Enter space", hint: "Click any planet or moon to travel there", back: "Solar System", time: "Time Machine", quiz: "Quiz", diary: "Diary", blue: "Blueprint", sim: "Simulator", lesson: "Next Frontier", listen: "Listen", stop: "Stop", last: "Last message", src: "Sources", dust: "Dust on the panels", power: "Power left", how: "How it worked", why: "Why it went silent", tap: "Tap a component", lm1: "My battery is low…", lm2: "Instruments are switching off, one by one.", lm3: "Thank you for hearing my story.", get: "Download certificate", name: "Your name", read: "Easy reading", srcNote: "Check each image's usage terms before publishing.", lesNote: "What did it teach the next mission?" },
+};
+const SRC = [["NASA Image and Video Library", "https://images.nasa.gov"], ["NASA 3D Resources (models)", "https://science.nasa.gov/3d-resources"], ["Mars Raw Images", "https://mars.nasa.gov/raw_images"], ["LROC (Apollo/Surveyor sites)", "https://lroc.asu.edu"], ["HiRISE (Mars orbit images)", "https://hirise.lpl.arizona.edu"]];
+
+function makeCert(name, score, lang) {
+  const c = document.createElement("canvas"); c.width = 1200; c.height = 800; const g = c.getContext("2d");
+  const bg = g.createLinearGradient(0, 0, 1200, 800); bg.addColorStop(0, "#1a1040"); bg.addColorStop(1, "#05070d");
+  g.fillStyle = bg; g.fillRect(0, 0, 1200, 800); g.strokeStyle = "#8bd3ff"; g.lineWidth = 6; g.strokeRect(30, 30, 1140, 740);
+  g.fillStyle = "#fff"; g.textAlign = "center"; g.direction = lang === "ar" ? "rtl" : "ltr";
+  g.font = "800 64px Tajawal, sans-serif"; g.fillText(lang === "ar" ? "شارة مستكشف آثار الفضاء" : "Certified Solar System Archaeologist", 600, 250);
+  g.font = "700 56px Tajawal, sans-serif"; g.fillStyle = "#8bd3ff"; g.fillText(name || "—", 600, 400);
+  g.fillStyle = "#cbd5e1"; g.font = "500 36px Tajawal, sans-serif"; g.fillText(`${score} / ${QUIZ.length}`, 600, 500);
+  g.fillText("Forgotten Explorers · NASA Space Apps 2026", 600, 650);
+  const a = document.createElement("a"); a.href = c.toDataURL("image/png"); a.download = "certificate.png"; a.click();
+}
+
+/* ============ SOLAR SYSTEM CANVAS ============ */
+const ORBITS = [
+  { k: "venus", d: 0.22, sp: 1.6, r: 11, c: "#d4a359", a0: 1 },
+  { k: "moon", d: 0.36, sp: 1, r: 12, c: "#4f8cff", a0: 3, earth: true },
+  { k: "mars", d: 0.5, sp: 0.7, r: 10, c: "#c85a32", a0: 5 },
+  { k: "titan", d: 0.68, sp: 0.4, r: 17, c: "#e0b07a", a0: 2, ring: true },
+  { k: "deep", d: 0.86, sp: 0.15, r: 6, c: "#a78bfa", a0: 4 },
+];
+function Space({ solar, onPick, labelRef }) {
+  const cv = useRef(), pos = useRef([]), mouse = useRef({ x: 0, y: 0 });
+  useEffect(() => {
+    const c = cv.current, g = c.getContext("2d"); let W, H, raf, t = 0, shoot = null;
+    const stars = Array.from({ length: 300 }, () => ({ x: Math.random(), y: Math.random(), z: Math.random() * 0.9 + 0.1, p: Math.random() * 6 }));
+    const size = () => { W = c.width = innerWidth; H = c.height = innerHeight; };
+    size(); addEventListener("resize", size);
+    const ball = (x, y, r, col) => {
+      const gr = g.createRadialGradient(x - r / 3, y - r / 3, r / 6, x, y, r);
+      gr.addColorStop(0, "#fff"); gr.addColorStop(0.25, col); gr.addColorStop(1, "#05070d");
+      g.shadowColor = col; g.shadowBlur = 22; g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.shadowBlur = 0;
+    };
+    const draw = () => {
+      t += 0.004; g.clearRect(0, 0, W, H);
+      const mx = mouse.current.x, my = mouse.current.y;
+      stars.forEach((s) => {
+        g.fillStyle = `rgba(255,255,255,${(0.25 + s.z * 0.6) * (0.7 + 0.3 * Math.sin(t * 40 + s.p))})`;
+        g.fillRect((((s.x * W - mx * 30 * s.z) % W) + W) % W, (((s.y * H - my * 30 * s.z) % H) + H) % H, s.z * 2, s.z * 2);
+      });
+      if (!shoot && Math.random() < 0.004) shoot = { x: Math.random() * W, y: Math.random() * H * 0.4, l: 0 };
+      if (shoot) { const gr = g.createLinearGradient(shoot.x, shoot.y, shoot.x - 90, shoot.y - 45); gr.addColorStop(0, "#fff"); gr.addColorStop(1, "transparent");
+        g.strokeStyle = gr; g.beginPath(); g.moveTo(shoot.x, shoot.y); g.lineTo(shoot.x - 90, shoot.y - 45); g.stroke(); shoot.x += 14; shoot.y += 7; if (++shoot.l > 45) shoot = null; }
+      pos.current = [];
+      if (solar) {
+        const cx = W / 2 - mx * 12, cy = H / 2 + 10 - my * 8, R = Math.min(W, H * 1.5) / 2 * 0.95, pulse = 1 + Math.sin(t * 25) * 0.04;
+        const sun = g.createRadialGradient(cx, cy, 4, cx, cy, 110 * pulse);
+        sun.addColorStop(0, "#fff7c2"); sun.addColorStop(0.25, "#ffb347"); sun.addColorStop(0.6, "rgba(255,110,0,.25)"); sun.addColorStop(1, "rgba(255,120,0,0)");
+        g.fillStyle = sun; g.beginPath(); g.arc(cx, cy, 110 * pulse, 0, 7); g.fill();
+        ORBITS.forEach((o) => {
+          const rx = o.d * R, ry = rx * 0.38;
+          g.strokeStyle = "rgba(139,211,255,.14)"; g.setLineDash(o.k === "deep" ? [4, 8] : []);
+          g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, 7); g.stroke(); g.setLineDash([]);
+          const a = o.a0 + t * o.sp, x = cx + Math.cos(a) * rx, y = cy + Math.sin(a) * ry;
+          if (o.ring) { g.strokeStyle = "rgba(224,176,122,.75)"; g.lineWidth = 2; g.beginPath(); g.ellipse(x, y, o.r * 1.9, o.r * 0.5, -0.3, 0, 7); g.stroke(); g.lineWidth = 1; }
+          if (o.earth) {
+            ball(x, y, 10, "#3b82f6"); const mxp = x + Math.cos(t * 9) * 26, myp = y + Math.sin(t * 9) * 10;
+            ball(mxp, myp, 5.5, "#c4c8d4"); pos.current.push({ k: o.k, x: mxp, y: myp, r: 24 });
+          } else { ball(x, y, o.r, o.c); pos.current.push({ k: o.k, x, y, r: o.r + 14 }); }
+          g.fillStyle = "#e5e7eb"; g.font = "700 14px Tajawal, sans-serif"; g.textAlign = "center";
+          g.fillText(labelRef.current(o.k), x, y + o.r + 24);
+        });
+      }
+      raf = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => { cancelAnimationFrame(raf); removeEventListener("resize", size); };
+  }, [solar]);
+  const hit = (e) => pos.current.find((p) => Math.hypot(p.x - e.clientX, p.y - e.clientY) < p.r);
+  return (
+    <canvas ref={cv} className="fixed inset-0 w-full h-full"
+      onMouseMove={(e) => { mouse.current = { x: e.clientX / innerWidth - 0.5, y: e.clientY / innerHeight - 0.5 }; cv.current.style.cursor = hit(e) ? "pointer" : "default"; }}
+      onClick={(e) => { const h = hit(e); if (h) onPick(h.k); }} />
+  );
+}
+
+/* ============ REAL NASA IMAGES (NASA Image & Video Library API, no key needed) ============ */
+const IMGQ = { opp: "Opportunity rover Mars", spi: "Spirit rover Mars", vik: "Viking 1 lander Mars", ins: "InSight lander Mars", pat: "Sojourner rover Mars Pathfinder", eag: "Apollo 11 lunar module Eagle", sur: "Surveyor 3 Apollo 12", lun: "Lunokhod 1 LRO", ven: "Mariner 10 Venus", huy: "Huygens probe Titan", voy: "Voyager spacecraft", kep: "Kepler space telescope" };
+const PIN = {};
+function useNasaImages(on) {
+  const [m, setM] = useState(() => Object.fromEntries(M.map((x) => [x.id, { u: `./images/${x.id}.jpg` }])));
+  useEffect(() => {
+    if (!on) return; let dead = false;
+    const merge = (id, o) => !dead && setM((p) => ({ ...p, [id]: { ...p[id], ...o } }));
+    fetch("./images/credits.json").then((r) => r.json()).then((c) => Object.entries(c).forEach(([id, v]) => merge(id, v))).catch(() => {});
+    M.forEach(async (x) => {
+      try {
+        const qs = PIN[x.id] ? `nasa_id=${PIN[x.id]}` : `q=${encodeURIComponent(IMGQ[x.id])}&media_type=image&page_size=3`;
+        const j = await (await fetch(`https://images-api.nasa.gov/search?${qs}`)).json();
+        const it = j.collection.items.find((i) => i.links && i.links[0] && i.links[0].href);
+        if (it) merge(x.id, { f: it.links[0].href.replace("~thumb", "~medium"), ft: it.data[0].title, fi: it.data[0].nasa_id });
+      } catch (e) {}
+    });
+    return () => { dead = true; };
+  }, [on]);
+  return m;
+}
+const Photo = ({ im, id, h = "h-40", caption, onUpload }) => {
+  const [bad, setBad] = useState(0);
+  const u = im && im.u;
+  useEffect(() => setBad(0), [u]);
+  if (!im) return null;
+  const src = bad === 0 ? im.u : bad === 1 ? im.f : null, cap = bad === 1 ? { t: im.ft, i: im.fi } : { t: im.t, i: im.i };
+  const pick = <label className="cursor-pointer glass rounded-full px-3 py-1 text-xs font-bold inline-block hover:bg-white/15"><input type="file" accept="image/*" hidden onChange={(e) => { onUpload(id, e.target.files[0]); e.target.value = ""; }} />{src ? "غيّر الصورة" : "أضف صورة"}</label>;
+  if (!src) return (
+    <div className={`w-full ${h} rounded-xl bg-white/5 flex flex-col items-center justify-center gap-2 text-center text-xs text-slate-300 p-3`} onPointerDown={(e) => e.stopPropagation()}>
+      <span>لا توجد صورة لهذه المركبة بعد</span>
+      <div className="flex gap-2 flex-wrap justify-center">
+        <a href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent("NASA " + IMGQ[id])}`} target="_blank" rel="noreferrer" className="accbg rounded-full px-3 py-1 font-bold">١. ابحث عن صورتها</a>
+        {pick}
+      </div>
+    </div>);
+  return (
+    <figure className="w-full" onPointerDown={(e) => e.stopPropagation()}>
+      <img key={src} src={src} alt={cap.t || ""} referrerPolicy="no-referrer" className={`w-full ${h} object-cover rounded-xl`} onError={() => setBad((b) => b + 1)} />
+      <figcaption className="mt-1 text-[11px] text-slate-400 flex items-center justify-between gap-2" dir="ltr">
+        {caption && cap.i ? <a href={`https://images.nasa.gov/details/${cap.i}`} target="_blank" rel="noreferrer" className="underline">NASA · {cap.t}</a> : <span>NASA / JPL</span>}
+        {pick}
+      </figcaption>
+    </figure>
+  );
+};
+
+/* ============ FACT CHECK STATUS ============ */
+const VER = {
+  opp: "https://www.sciencedaily.com/releases/2019/02/190213150035.htm",
+  ins: "https://phys.org/news/2022-12-nasa-insight-mars-lander-mission.html",
+  huy: "https://sci.esa.int/web/cassini-huygens/-/55221-huygens-titan-science-highlights",
+  voy: "https://www.sciencedaily.com/releases/2026/11/261103003152.htm",
+};
+function LightDayCountdown() {
+  const target = Date.UTC(2026, 10, 18, 10, 16, 7);
+  const [n, setN] = useState(Date.now());
+  useEffect(() => { const id = setInterval(() => setN(Date.now()), 1000); return () => clearInterval(id); }, []);
+  const d = target - n;
+  if (d <= 0) return <p className="mt-3 glass rounded-xl p-3 font-bold acc">وصل فوياجر 1 إلى يوم ضوئي كامل من الأرض (نحو 25.9 مليار كم).</p>;
+  const p = (v) => String(v).padStart(2, "0");
+  return (
+    <div className="mt-3 glass rounded-xl p-3 text-center" dir="rtl">
+      <p className="text-xs text-slate-300">باقٍ على وصول فوياجر 1 إلى يوم ضوئي من الأرض (18 نوفمبر 2026)</p>
+      <p className="text-2xl font-extrabold acc tabular-nums" dir="ltr">{Math.floor(d / 864e5)}d {p(Math.floor(d / 36e5) % 24)}:{p(Math.floor(d / 6e4) % 60)}:{p(Math.floor(d / 1e3) % 60)}</p>
+    </div>);
+}
+
+/* ============ SURFACE EXPLORER ============ */
+const SKY = {
+  mars: [{ l: 62, t: 14, s: 46, bg: "radial-gradient(circle,#fff,#ffd9a0 40%,transparent 72%)" }, { l: 22, t: 22, s: 16, bg: "#9a8070" }],
+  moon: [{ l: 30, t: 10, s: 120, bg: "radial-gradient(circle at 35% 30%,#a8d6ff,#2563eb 50%,#0b1b4a)" }, { l: 78, t: 8, s: 34, bg: "radial-gradient(circle,#fff,#fff6c8 45%,transparent 72%)" }],
+  venus: [{ l: 55, t: 12, s: 170, bg: "radial-gradient(circle,#fff4c0,#d4a35999 50%,transparent 72%)" }],
+  titan: [{ l: 50, t: 6, s: 160, bg: "radial-gradient(circle at 35% 30%,#fbe3b0,#c9a46a 55%,#4a3a22)", ring: true }],
+  deep: [{ l: 40, t: 8, s: 300, bg: "radial-gradient(circle,#8b5cf666,transparent 70%)" }, { l: 75, t: 20, s: 16, bg: "#fff" }],
+};
+const hill = (seed, amp, base) => { let d = "M0,100 "; for (let i = 0; i <= 100; i += 2) d += `L${i},${base + amp * (Math.sin(i * 0.11 + seed) + 0.5 * Math.sin(i * 0.27 + seed * 2))} `; return d + "L100,100 Z"; };
+const Craft = ({ c, on }) => (
+  <svg viewBox="0 0 60 44" width={on ? 120 : 72} style={{ filter: `drop-shadow(0 0 ${on ? 20 : 8}px ${c})`, transition: "all .7s" }}>
+    <rect x="20" y="12" width="20" height="14" rx="3" fill="#cfd6e4" /><rect x="2" y="14" width="16" height="8" fill={c} opacity=".85" /><rect x="42" y="14" width="16" height="8" fill={c} opacity=".85" />
+    <line x1="30" y1="12" x2="30" y2="5" stroke="#cfd6e4" /><circle cx="30" cy="4" r="3" fill="#fff" /><line x1="30" y1="26" x2="30" y2="34" stroke="#cfd6e4" /><circle cx="22" cy="35" r="5" fill="#556" /><circle cx="38" cy="35" r="5" fill="#556" />
+  </svg>);
+const CraftIcon = ({ c, on, im, real }) => {
+  const [bad, setBad] = useState(0);
+  const u = im && im.u;
+  useEffect(() => setBad(0), [u]);
+  const src = real && im ? (bad === 0 ? im.u : bad === 1 ? im.f : null) : null;
+  if (!src) return <Craft c={c} on={on} />;
+  const w = on ? 120 : 76;
+  return <img src={src} alt="" referrerPolicy="no-referrer" onError={() => setBad((b) => b + 1)} className="object-cover rounded-full border-2" style={{ width: w, height: w, borderColor: c, boxShadow: `0 0 ${on ? 22 : 10}px ${c}`, transition: "all .7s" }} />;
+};
+const Eq = () => <span aria-hidden className="flex items-end gap-[3px] h-5">{[0, 1, 2, 3].map((i) => <i key={i} className="w-[3px] h-full rounded-full accbg" style={{ transformOrigin: "bottom", animation: `eq .${6 + i}s ease-in-out ${i * 0.1}s infinite` }} />)}</span>;
+function Surface({ B, name, list, nm, tg, en, onOpen, play, imgs, onUpload, onTell, onToggle, speaking, notice, real }) {
+  const [pan, setPan] = useState(0.3), [focus, setFocus] = useState(null), [chip, setChip] = useState(null), [drag, setDrag] = useState(null), [bad, setBad] = useState(0);
+  const box = useRef(), moved = useRef(false);
+  const far = useMemo(() => hill(1, 7, 55), []), near = useMemo(() => hill(4, 4, 78), []);
+  const px = (m) => (8 + m.x * 0.84) / 100, clamp = (v) => Math.max(0, Math.min(1, v));
+  const layer = (w) => ({ width: `${w}%`, transform: `translateX(-${(pan * (w - 100)) / w * 100}%)`, transition: drag ? "none" : "transform .9s cubic-bezier(.2,.8,.2,1)" });
+  const go = (m) => { play("click"); moved.current = false; setFocus(m.id); setChip(null); setPan(clamp((px(m) * 2.5 - 0.5) / 1.5)); onTell(m); };
+  const step = (d) => { const i = list.findIndex((m) => m.id === focus); go(list[(i + d + list.length) % list.length]); };
+  const fm = list.find((m) => m.id === focus);
+  const live = speaking;
+  const im = fm ? imgs[fm.id] : null;
+  useEffect(() => setBad(0), [focus, im && im.u]);
+  const bgSrc = im ? (bad === 0 ? im.u : bad === 1 ? im.f : null) : null, cap = bad === 1 ? { t: im && im.ft, i: im && im.fi } : { t: im && im.t, i: im && im.i };
+  const chips = fm ? [[Clock, 2], [Rocket, 3], [Lightbulb, 4], [Radio, 1]] : [];
+  return (
+    <div ref={box} className="absolute inset-0 overflow-hidden fin touch-none select-none" style={{ cursor: drag ? "grabbing" : "grab", direction: "ltr" }}
+      onPointerDown={(e) => { moved.current = false; setDrag({ x: e.clientX, p: pan }); }}
+      onPointerMove={(e) => { if (!drag) return; const dx = e.clientX - drag.x; if (Math.abs(dx) > 5) moved.current = true; setPan(clamp(drag.p - dx / (box.current.clientWidth * 1.5))); }}
+      onPointerUp={() => setDrag(null)} onPointerLeave={() => setDrag(null)}>
+      <div className="absolute inset-0" style={{ background: `linear-gradient(#05070d 0%, ${B.c}33 75%, ${B.c}66 100%)`, transform: focus ? "scale(1.18)" : "scale(1)", transformOrigin: "50% 70%", transition: "transform .9s" }}>
+        <div className="absolute inset-0" style={layer(130)}>{(SKY[B.k] || []).map((o, i) => (
+          <div key={i} className="absolute rounded-full" style={{ left: `${o.l}%`, top: `${o.t}%`, width: o.s, height: o.s, background: o.bg }}>{o.ring && <div className="absolute rounded-full border-4" style={{ inset: "35% -35%", borderColor: "#d9b97aaa", transform: "rotate(-18deg)" }} />}</div>))}</div>
+        <div className="absolute inset-x-0 bottom-0 h-3/5" style={layer(170)}><svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full"><path d={far} fill={B.c} opacity=".35" /></svg></div>
+        <div className="absolute inset-x-0 bottom-0 h-1/2" style={layer(250)}>
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full"><defs><linearGradient id="gr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={B.c} stopOpacity=".85" /><stop offset="1" stopColor="#05070d" /></linearGradient></defs><path d={near} fill="url(#gr)" /></svg>
+          {list.map((m, i) => (
+            <button key={m.id} onClick={() => { if (!moved.current) go(m); }} aria-label={nm(m)} className="absolute flex flex-col items-center" style={{ left: `${px(m) * 100}%`, bottom: `${58 - (i % 3) * 8}%`, transform: "translateX(-50%)" }}>
+              <CraftIcon c={B.c} on={focus === m.id} im={imgs[m.id]} real={real} />
+              <span className="glass rounded-full px-3 py-1 text-xs font-bold whitespace-nowrap mt-1">{nm(m)}</span>
+            </button>))}
+        </div>
+      </div>
+
+      {fm && bgSrc && (
+        <div key={fm.id} className="absolute inset-0 z-[5] overflow-hidden bg-[#05070d] fin">
+          <img key={bgSrc} src={bgSrc} alt={cap.t || nm(fm)} referrerPolicy="no-referrer" onError={() => setBad((b) => b + 1)} className="absolute inset-0 w-full h-full object-cover" style={{ animation: "kb 30s ease-in-out infinite alternate" }} />
+          <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(5,7,13,.7) 0%, rgba(5,7,13,.05) 28%, rgba(5,7,13,.1) 45%, rgba(5,7,13,.93) 100%)" }} />
+        </div>)}
+
+      <div className="absolute top-16 start-3 z-10 glass rounded-2xl px-4 py-2" style={{ direction: en ? "ltr" : "rtl" }}><b className="acc text-lg">{name}</b>{!en && <p className="text-xs text-slate-300 max-w-[240px] leading-relaxed">{B.fact}</p>}</div>
+      {!focus && <p className="absolute top-1/3 inset-x-0 text-center text-slate-200 pointer-events-none px-4" style={{ direction: en ? "ltr" : "rtl" }}>{en ? "Drag to roam the surface, then tap a craft" : "اسحب لتتجول على السطح، ثم اضغط على المركبة"}</p>}
+
+      {fm && (
+        <div className="absolute inset-x-0 bottom-[76px] z-10 flex justify-center px-3 pointer-events-none" style={{ direction: en ? "ltr" : "rtl" }}>
+          <div className="pointer-events-auto w-[min(94vw,760px)] max-h-[46vh] overflow-y-auto rounded-2xl p-4 bg-[#05070d]/75 backdrop-blur-md border border-white/15 fin" onPointerDown={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 shrink-0 rounded-full grid place-items-center border-2 accbd" style={{ boxShadow: `0 0 14px ${B.c}` }}>{live ? <Eq /> : <Volume2 size={18} className="acc" />}</div>
+              <div className="flex-1 min-w-0"><p className="font-extrabold text-lg leading-tight">{nm(fm)}</p><p className="text-xs acc font-bold">{tg(fm)} · {fm.y}</p></div>
+              <button onClick={() => onToggle(fm)} className="glass rounded-full px-4 py-2 text-sm font-bold flex items-center gap-2 shrink-0">{speaking ? <Square size={16} /> : <Volume2 size={16} />} {speaking ? (en ? "Stop" : "إيقاف") : (en ? "Hear its story" : "اسمع قصتها")}</button>
+            </div>
+            <p className="mt-3 text-base sm:text-lg leading-loose text-slate-100" dir="rtl">«{fm.diary}»</p>
+            {chip !== null && <p className="mt-2 leading-loose" dir="rtl"><b className="acc">{SL[en ? "en" : "ar"][chip]}: </b>{fm.s[chip]}</p>}
+            {notice && <p className="mt-2 text-sm text-amber-300">{notice}</p>}
+            <div className="mt-3 flex gap-2 flex-wrap items-center">
+              <span className="text-xs text-slate-400">{en ? "Ask me:" : "اسألني:"}</span>
+              {chips.map(([Ic, idx]) => <button key={idx} onClick={() => { play("click"); setChip(chip === idx ? null : idx); }} className={`rounded-full px-3 py-1.5 text-sm font-bold flex items-center gap-1.5 ${chip === idx ? "accbg" : "glass"}`}><Ic size={14} /> {SL[en ? "en" : "ar"][idx]}</button>)}
+              <button onClick={() => onOpen(fm.id)} className="accbg rounded-full px-4 py-1.5 text-sm font-bold flex items-center gap-1.5 ms-auto"><Rocket size={14} /> {en ? "Open full file" : "افتح الملف الكامل"}</button>
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-2 text-[11px] text-slate-400" dir="ltr">
+              {bgSrc && cap.i ? <a href={`https://images.nasa.gov/details/${cap.i}`} target="_blank" rel="noreferrer" className="underline truncate">NASA · {cap.t}</a> : bgSrc ? <span>NASA / JPL</span> : <a href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent("NASA " + IMGQ[fm.id])}`} target="_blank" rel="noreferrer" className="underline">{en ? "No photo yet — search for one" : "لا توجد صورة بعد — ابحث عن صورتها"}</a>}
+              <label className="cursor-pointer glass rounded-full px-3 py-1 text-xs font-bold shrink-0 hover:bg-white/15"><input type="file" accept="image/*" hidden onChange={(e) => { onUpload(fm.id, e.target.files[0]); e.target.value = ""; }} />{bgSrc ? (en ? "Change photo" : "غيّر الصورة") : (en ? "Add photo" : "أضف صورة")}</label>
+            </div>
+          </div>
+        </div>)}
+
+      <div className="absolute bottom-3 inset-x-0 px-3 flex items-center gap-2 z-10" onPointerDown={(e) => e.stopPropagation()} style={{ direction: en ? "ltr" : "rtl" }}>
+        {fm && <button className="glass rounded-full w-10 h-10 grid place-items-center shrink-0" onClick={() => step(-1)} aria-label="prev"><ArrowRight size={18} /></button>}
+        <div className="flex gap-2 overflow-x-auto flex-1 py-1">{list.map((m) => (
+          <button key={m.id} onClick={() => go(m)} className={`shrink-0 rounded-xl px-3 py-2 text-start ${focus === m.id ? "accbg" : "glass"}`}><b className="block text-sm">{nm(m)}</b><span className="text-xs opacity-80">{m.y}</span></button>))}</div>
+        {fm && <button className="glass rounded-full w-10 h-10 grid place-items-center shrink-0" onClick={() => step(1)} aria-label="next"><ArrowRight size={18} className="rotate-180" /></button>}
+      </div>
+    </div>
+  );
+}
+
+/* ============ APP ============ */
+function ForgottenExplorers() {
+  const [lang, setLang] = useState("ar"), [read, setRead] = useState(false);
+  const [started, setStarted] = useState(false), [view, setView] = useState("solar");
+  const [sel, setSel] = useState(null), [tab, setTab] = useState("diary"), [part, setPart] = useState(null), [dust, setDust] = useState(0);
+  const [speaking, setSpeaking] = useState(false), [notice, setNotice] = useState("");
+  const [warp, setWarp] = useState(false), [modal, setModal] = useState(null), [year, setYear] = useState(2026), [lm, setLm] = useState(-1);
+  const [qi, setQi] = useState(0), [score, setScore] = useState(0), [pick, setPick] = useState(null), [done, setDone] = useState(false), [name, setName] = useState("");
+  const [muted, setMuted] = useState(false), [realIcons, setRealIcons] = useState(false), audioRef = useRef(null);
+  const apiImgs = useNasaImages(started);
+  const [shots, setShots] = useState({});
+  useEffect(() => { (async () => { try { const r = await window.storage.get("shots"); if (r) setShots(JSON.parse(r.value)); } catch (e) {} })(); }, []);
+  const upload = (id, file) => {
+    if (!file) return; const rd = new FileReader();
+    rd.onload = () => { const im = new Image(); im.onload = () => {
+      const k = Math.min(1, 900 / Math.max(im.width, im.height)), c = document.createElement("canvas"); c.width = im.width * k; c.height = im.height * k;
+      c.getContext("2d").drawImage(im, 0, 0, c.width, c.height); const d = c.toDataURL("image/jpeg", 0.8);
+      setShots((p) => { const n = { ...p, [id]: d }; try { window.storage.set("shots", JSON.stringify(n)); } catch (e) {} return n; });
+    }; im.src = rd.result; };
+    rd.readAsDataURL(file);
+  };
+  const imgs = { ...apiImgs, ...Object.fromEntries(Object.entries(shots).map(([k, v]) => [k, { u: v }])) };
+  const mutedRef = useRef(false); mutedRef.current = muted;
+  const play = (k) => !mutedRef.current && sfx[k]();
+  const t = (k) => T[lang][k], en = lang === "en";
+  const nm = (m) => (en ? EN[m.id][0] : m.n), tg = (m) => (en ? EN[m.id][1] : m.tag);
+  const bn = (k) => (en ? BEN[k] : BODIES[k].n);
+  const labelRef = useRef(bn); labelRef.current = bn;
+
+  const B = { ...BODIES[view], k: view };
+  const list = useMemo(() => M.filter((m) => m.b === view), [view]);
+  const mission = M.find((m) => m.id === sel);
+  const timeline = useMemo(() => [...M].sort((a, b) => a.y - b.y).filter((m) => m.y <= year), [year]);
+  const tabs = mission ? [["diary", t("diary")], ["blue", t("blue")], ...(SOLAR.includes(mission.id) ? [["sim", t("sim")]] : []), ["lesson", t("lesson")]] : [];
+
+  useEffect(() => () => { audioRef.current?.pause(); }, []);
+  useEffect(() => { (async () => { try { const r = await window.storage.get("realIcons"); if (r) setRealIcons(r.value === "1"); } catch (e) {} })(); }, []);
+  useEffect(() => {
+    if (lm < 0 || lm > 4) return;
+    if (!mutedRef.current) tone(440 - lm * 70, 1, "sine", 0, 0.1, 200 - lm * 20);
+    const id = setTimeout(() => setLm(lm + 1), 1800); return () => clearTimeout(id);
+  }, [lm]);
+  const stop = () => { const a = audioRef.current; audioRef.current = null; if (a) a.pause(); setSpeaking(false); };
+
+  const enter = () => { ac(); setStarted(true); ambient(true); sfx.planet(); };
+  const fly = (k) => { play("planet"); stop(); setNotice(""); setWarp(true); setTimeout(() => { setView(k); setSel(null); setPart(null); }, 450); setTimeout(() => setWarp(false), 1100); };
+  const openMission = (id) => { play("click"); stop(); setNotice(""); setSel(id); setPart(null); setTab("diary"); setDust(0); };
+  const toggleMute = () => { const m = !muted; setMuted(m); ambient(!m); };
+
+  const playVoice = (m, explicit = false) => {
+    stop(); setNotice("");
+    const a = new Audio(`./audio/${m.id}.mp3`); audioRef.current = a;
+    a.onplaying = () => { if (audioRef.current === a) setSpeaking(true); };
+    a.onended = () => { if (audioRef.current === a) { audioRef.current = null; setSpeaking(false); } };
+    a.onerror = () => { if (audioRef.current === a) { audioRef.current = null; setSpeaking(false); if (explicit) setNotice(en ? "No recording has been added for this craft yet." : "لم يُضف تسجيل صوتي لهذه المركبة بعد."); } };
+    a.play().catch(() => {});
+  };
+  const speak = () => (speaking ? stop() : playVoice(mission, true));
+  const tellMission = (m) => { if (mutedRef.current) stop(); else playVoice(m); };
+  const toggleVoice = (m) => (speaking ? stop() : playVoice(m, true));
+  const toggleIcons = () => { const v = !realIcons; setRealIcons(v); try { window.storage.set("realIcons", v ? "1" : "0"); } catch (e) {} };
+
+  const answer = (i) => { if (pick !== null) return; setPick(i); const ok = i === QUIZ[qi].a; if (ok) setScore((s) => s + 1); play(ok ? "win" : "bad"); };
+  const next = () => { if (qi === QUIZ.length - 1) { setDone(true); play("win"); } else { setQi(qi + 1); setPick(null); } };
+  const reset = () => { setQi(0); setScore(0); setPick(null); setDone(false); };
+
+  const [how, why] = mission && part !== null ? mission.p[part].split("|") : [];
+  const power = Math.round(100 * Math.pow(1 - dust / 100, 1.6));
+  const btn = "glass rounded-full px-4 py-2 text-sm font-bold flex items-center gap-2 hover:bg-white/15 transition";
+  const lmLines = mission ? [nm(mission), t("lm1"), `${SL[lang][1]}: ${mission.s[1]}`, t("lm2"), t("lm3")] : [];
+
+  return (
+    <div dir={en ? "ltr" : "rtl"} className="fixed inset-0 overflow-hidden text-slate-100"
+      style={{ background: "radial-gradient(ellipse at 20% 10%, #2a1260 0, transparent 45%), radial-gradient(ellipse at 85% 90%, #0b3a5c 0, transparent 50%), #05070d", fontFamily: "'Tajawal','Segoe UI',sans-serif", "--c": view === "solar" ? "#8bd3ff" : B.c, letterSpacing: read ? ".04em" : 0, lineHeight: read ? 2.1 : undefined, fontSize: read ? "1.08rem" : undefined }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
+        .glass{background:rgba(10,14,28,.66);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.14)}
+        .acc{color:var(--c)} .accbg{background:var(--c);color:#05070d} .accbd{border-color:var(--c)}
+        @keyframes flt{0%,100%{transform:translate(-50%,-50%)}50%{transform:translate(-50%,calc(-50% - 8px))}}
+        @keyframes wp{0%{opacity:0;transform:scale(.4)}40%{opacity:1}100%{opacity:0;transform:scale(5)}}
+        @keyframes spin{to{transform:rotate(360deg)}} @keyframes glow{0%,100%{text-shadow:0 0 20px #7c5cff}50%{text-shadow:0 0 44px #38bdf8}}
+        @keyframes fin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+        @keyframes kb{from{transform:scale(1.04) translate(0,0)}to{transform:scale(1.14) translate(-1.5%,-1%)}} @keyframes eq{0%,100%{transform:scaleY(.25)}50%{transform:scaleY(1)}}
+        .fin{animation:fin 1s both} @media (prefers-reduced-motion:reduce){*{animation:none!important}}`}</style>
+
+      <Space solar={view === "solar"} onPick={fly} labelRef={labelRef} />
+      {warp && <div className="fixed inset-0 z-40 pointer-events-none" style={{ background: "radial-gradient(circle, #fff 0, #7cc4ff 12%, transparent 45%)", animation: "wp 1s ease-in forwards" }} />}
+
+      <header className="fixed top-0 inset-x-0 z-20 p-3 flex items-center justify-between gap-2 flex-wrap">
+        <div>{view !== "solar" && <button className={btn} onClick={() => fly("solar")}><ArrowRight size={16} className={en ? "rotate-180" : ""} /> {t("back")}</button>}</div>
+        <div className="flex gap-2 flex-wrap">
+          <button className={btn} onClick={() => setLang(en ? "ar" : "en")}><Languages size={16} /> {en ? "عربي" : "EN"}</button>
+          <button className={btn} onClick={() => setRead(!read)} aria-pressed={read} title={t("read")}><Eye size={16} /></button>
+          <button className={btn} onClick={() => { play("click"); setModal("time"); }}><Clock size={16} /> <span className="hidden sm:inline">{t("time")}</span></button>
+          <button className={btn} onClick={() => { play("click"); reset(); setModal("quiz"); }}><Trophy size={16} /> <span className="hidden sm:inline">{t("quiz")}</span></button>
+          <button className={btn} onClick={() => setModal("src")}><Database size={16} /> <span className="hidden sm:inline">{t("src")}</span></button>
+          {view !== "solar" && <button className={btn + (realIcons ? " ring-2 ring-white/60" : "")} onClick={toggleIcons} aria-pressed={realIcons} title={en ? "Show real photos instead of icons" : "عرض الصور الحقيقية بدل الأيقونات"}><Camera size={16} /> <span className="hidden sm:inline">{en ? "Real photos" : "الصور الحقيقية"}</span></button>}
+          <button className={btn} onClick={toggleMute} aria-label="mute">{muted ? <VolumeX size={16} /> : <Volume2 size={16} />}</button>
+        </div>
+      </header>
+
+      {view === "solar" && started && (
+        <div className="fixed bottom-6 inset-x-0 z-10 text-center pointer-events-none px-4 fin">
+          <h1 className="text-3xl sm:text-5xl font-extrabold" style={{ animation: "glow 4s infinite" }}>{t("title")}</h1>
+          <p className="mt-1 text-slate-300">{t("hint")}</p>
+        </div>
+      )}
+
+      {view !== "solar" && <Surface key={view} imgs={imgs} onUpload={upload} B={B} name={bn(view)} list={list} nm={nm} tg={tg} en={en} onOpen={openMission} play={play} onTell={tellMission} onToggle={toggleVoice} speaking={speaking} notice={notice} real={realIcons} />}
+
+      {/* MISSION CONSOLE */}
+      {mission && view !== "solar" && (
+        <aside className="fixed z-30 inset-x-2 top-14 bottom-2 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[min(900px,94vw)] glass rounded-2xl overflow-hidden flex flex-col fin" style={{ boxShadow: `0 0 60px ${B.c}44` }}>
+          <div className="p-4 flex items-start justify-between gap-3" style={{ background: `linear-gradient(120deg, ${B.c}33, transparent)` }}>
+            <div><h2 className="text-2xl sm:text-3xl font-extrabold">{nm(mission)}</h2><p className="acc font-bold">{tg(mission)} · {mission.y}{mission.end !== mission.y ? `–${mission.end >= 2026 ? "…" : mission.end}` : ""}</p></div>
+            <button onClick={() => { stop(); setSel(null); }} aria-label="close"><X size={22} /></button>
+          </div>
+          <div className="px-4 flex gap-2 flex-wrap">{tabs.map(([k, l]) => <button key={k} onClick={() => { play("click"); setTab(k); }} className={`rounded-full px-4 py-1.5 text-sm font-bold ${tab === k ? "accbg" : "glass"}`}>{l}</button>)}</div>
+          <div className="p-4 overflow-y-auto flex-1">
+            {tab === "diary" && (
+              <div className="grid md:grid-cols-5 gap-4">
+                <div className="md:col-span-3">
+                  <Photo im={imgs[mission.id]} id={mission.id} onUpload={upload} h="h-52" caption />
+                  <p className="mt-3 text-lg leading-loose" dir="rtl">«{mission.diary}»</p>
+                  <div className="mt-4 flex gap-2 flex-wrap">
+                    <button onClick={speak} className="accbg rounded-full px-5 py-2 font-bold flex items-center gap-2">{speaking ? <Square size={16} /> : <Volume2 size={16} />} {speaking ? t("stop") : t("listen")}</button>
+                    <button onClick={() => { play("click"); setLm(0); }} className={btn}><Wind size={16} /> {t("last")}</button>
+                  </div>
+                  {notice && <p className="mt-2 text-sm text-amber-300">{notice}</p>}
+                  {mission.id === "voy" && <LightDayCountdown />}
+                </div>
+                <dl className="md:col-span-2 grid gap-2 content-start">
+                  {SL[lang].map((k, i) => <div key={k} className="bg-black/30 rounded-xl px-3 py-2"><dt className="text-xs text-slate-400">{k}</dt><dd className="font-bold text-sm" dir="rtl">{mission.s[i]}</dd></div>)}
+                </dl>
+                <p className="md:col-span-5 text-xs text-slate-400" dir="rtl">{VER[mission.id] ? <>✓ الأرقام راجعتها على مصدر رسمي: <a href={VER[mission.id]} target="_blank" rel="noreferrer" className="acc underline">المصدر</a></> : "⏳ أرقام هذه المركبة قيد المراجعة على مصادر ناسا"}</p>
+              </div>)}
+            {tab === "blue" && (
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="relative h-64 bg-black/30 rounded-xl">
+                  <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full" aria-hidden><rect x="35" y="38" width="30" height="24" rx="4" fill="none" stroke="var(--c)" strokeWidth="1.5" /><line x1="35" y1="45" x2="22" y2="28" stroke="var(--c)" /><line x1="65" y1="45" x2="78" y2="28" stroke="var(--c)" /><line x1="38" y1="62" x2="25" y2="76" stroke="var(--c)" /><line x1="62" y1="62" x2="78" y2="76" stroke="var(--c)" /></svg>
+                  {PART_META.map((p, i) => { const Ic = p.ic; return <button key={i} onClick={() => { play("click"); setPart(i); }} aria-label={p.k} style={{ left: `${p.pos[0]}%`, top: `${p.pos[1]}%` }} className={`absolute -translate-x-1/2 -translate-y-1/2 w-11 h-11 rounded-full grid place-items-center border-2 accbd transition ${part === i ? "accbg scale-110" : "bg-[#05070d]"}`}><Ic size={18} /></button>; })}
+                </div>
+                <div className="bg-black/30 rounded-xl p-4" dir="rtl">
+                  {part === null ? <p className="text-slate-300">{t("tap")}</p> : <><h3 className="font-extrabold acc">{PART_META[part].k}</h3><p className="mt-2 font-bold text-sm">{t("how")}</p><p className="leading-loose">{how}</p><p className="mt-2 font-bold text-sm">{t("why")}</p><p className="leading-loose">{why}</p></>}
+                </div>
+              </div>)}
+            {tab === "sim" && (
+              <div className="max-w-xl">
+                <label className="font-bold">{t("dust")}: {dust}%</label>
+                <input type="range" min="0" max="100" value={dust} onChange={(e) => setDust(+e.target.value)} className="w-full mt-2" style={{ accentColor: B.c }} />
+                <p className="mt-4 font-bold">{t("power")}: {power}%</p>
+                <div className="h-5 rounded-full bg-black/40 overflow-hidden mt-1"><div className="h-full transition-all" style={{ width: `${power}%`, background: power > 30 ? "linear-gradient(90deg,#34d399,#fde047)" : "#ef4444", boxShadow: "0 0 18px currentColor" }} /></div>
+                {power < 12 && <button onClick={() => setLm(0)} className="mt-4 accbg rounded-full px-5 py-2 font-bold flex items-center gap-2"><Wind size={16} /> {t("last")}</button>}
+              </div>)}
+            {tab === "lesson" && (
+              <div className="max-w-2xl"><p className="acc font-bold flex items-center gap-2"><Lightbulb size={18} /> {t("lesNote")}</p><p className="mt-3 text-xl leading-loose">{LESSON[mission.id][en ? 1 : 0]}</p></div>)}
+          </div>
+        </aside>
+      )}
+
+      {/* LAST MESSAGE */}
+      {lm >= 0 && mission && (
+        <div className="fixed inset-0 z-[70] bg-black grid place-items-center p-6 text-center" style={{ transition: "background 2s" }}>
+          <div className="space-y-5">{lmLines.slice(0, lm + 1).map((l, i) => <p key={i} className="fin text-xl sm:text-3xl font-bold" style={{ opacity: 1 - i * 0.12 }}>{l}</p>)}</div>
+          <button onClick={() => setLm(-1)} className={btn + " absolute bottom-8"}><X size={16} /> {en ? "Close" : "إغلاق"}</button>
+        </div>)}
+
+      {/* MODALS */}
+      {modal && (
+        <div className="fixed inset-0 z-50 bg-black/70 grid place-items-center p-4" role="dialog" aria-modal="true">
+          <div className="glass bg-[#0d1220] rounded-2xl p-5 w-full max-w-2xl max-h-[85vh] overflow-y-auto relative">
+            <button onClick={() => setModal(null)} aria-label="close" className="absolute top-3 end-3"><X size={20} /></button>
+            {modal === "time" && <><h2 className="text-xl font-extrabold flex items-center gap-2"><Clock size={20} className="acc" /> {t("time")}: {year}</h2>
+              <input type="range" min="1960" max="2026" value={year} onChange={(e) => setYear(+e.target.value)} className="w-full mt-3" style={{ accentColor: "#8bd3ff" }} />
+              <ol className="mt-3 grid sm:grid-cols-2 gap-2">{timeline.map((m) => <li key={m.id}><button onClick={() => { setModal(null); setView(m.b); openMission(m.id); play("planet"); }} className="w-full text-start bg-black/30 hover:bg-black/50 rounded-xl p-3"><b className="acc">{m.y}</b> <b>{nm(m)}</b><span className="block text-xs text-slate-400">{bn(m.b)}</span></button></li>)}</ol></>}
+            {modal === "src" && <><h2 className="text-xl font-extrabold flex items-center gap-2"><Database size={20} className="acc" /> {t("src")}</h2>
+              <ul className="mt-3 space-y-2" dir="ltr">{SRC.map(([n, u]) => <li key={u}><a href={u} target="_blank" rel="noreferrer" className="acc underline">{n}</a></li>)}</ul><p className="mt-4 text-sm text-slate-400">{t("srcNote")}</p></>}
+            {modal === "quiz" && (!done ? <><h2 className="text-xl font-extrabold flex items-center gap-2"><Trophy size={20} className="acc" /> {t("quiz")}</h2>
+              <p className="mt-2 text-sm text-slate-400">{qi + 1}/{QUIZ.length} · {score}</p><p className="mt-2 text-lg font-bold" dir="rtl">{QUIZ[qi].q}</p>
+              <div className="mt-3 grid gap-2" dir="rtl">{QUIZ[qi].o.map((o, i) => { const r = pick !== null && i === QUIZ[qi].a, w = pick === i && i !== QUIZ[qi].a; return <button key={i} onClick={() => answer(i)} className={`rounded-xl px-4 py-3 text-start border ${r ? "bg-emerald-600/40 border-emerald-400" : w ? "bg-red-600/40 border-red-400" : "bg-black/30 border-white/10 hover:bg-black/50"}`}>{o}</button>; })}</div>
+              {pick !== null && <button onClick={next} className="mt-3 accbg rounded-full px-5 py-2 font-bold">{qi === QUIZ.length - 1 ? "✓" : "→"}</button>}</> :
+              <div className="text-center py-3"><Award size={64} className="mx-auto acc" /><h3 className="mt-2 text-2xl font-extrabold">{score >= 3 ? (en ? "Certified Solar System Archaeologist" : "شارة مستكشف آثار الفضاء") : (en ? "Try again" : "حاول مرة أخرى")}</h3>
+                <p className="mt-2">{score} / {QUIZ.length}</p>
+                {score >= 3 && <div className="mt-4 flex gap-2 justify-center flex-wrap"><input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("name")} className="rounded-full px-4 py-2 bg-black/40 border border-white/20 text-center" /><button onClick={() => makeCert(name, score, lang)} className="accbg rounded-full px-5 py-2 font-bold flex items-center gap-2"><Download size={16} /> {t("get")}</button></div>}
+                <button onClick={reset} className={btn + " mx-auto mt-3"}><Rocket size={16} /> {en ? "Again" : "أعد الاختبار"}</button></div>)}
+          </div>
+        </div>)}
+
+      {!started && (
+        <div className="fixed inset-0 z-[60] grid place-items-center text-center p-6" style={{ background: "radial-gradient(circle at 50% 40%, #2a1260 0, #05070d 70%)" }}>
+          <div className="fin">
+            <h1 className="text-5xl sm:text-7xl font-extrabold" style={{ animation: "glow 4s infinite" }}>{t("title")}</h1>
+            <p className="mt-4 text-slate-300 max-w-md mx-auto leading-loose">{t("sub")}</p>
+            <button onClick={enter} className="mt-8 rounded-full px-10 py-4 text-xl font-extrabold text-[#05070d] flex items-center gap-3 mx-auto" style={{ background: "linear-gradient(90deg,#8bd3ff,#a78bfa)", boxShadow: "0 0 50px #7c5cff" }}><Rocket /> {t("enter")}</button>
+            <button onClick={() => setLang(en ? "ar" : "en")} className="mt-4 text-sm text-slate-400 underline">{en ? "عربي" : "English"}</button>
+          </div>
+        </div>)}
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<ForgottenExplorers />);
+
+  </script>
+</body>
+</html>
