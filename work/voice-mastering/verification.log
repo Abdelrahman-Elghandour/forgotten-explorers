@@ -1,0 +1,30 @@
+Input #0, wav, from '/home/ubuntu/explorers/audio/intro-studio.wav':
+  Metadata:
+    encoder         : Lavf60.16.100
+  Duration: 00:00:14.23, bitrate: 2304 kb/s
+  Stream #0:0: Audio: pcm_s24le ([1][0][0][0] / 0x0001), 48000 Hz, stereo, s32 (24 bit), 2304 kb/s
+Stream mapping:
+  Stream #0:0 -> #0:0 (pcm_s24le (native) -> pcm_s16le (native))
+Output #0, null, to 'pipe:':
+  Metadata:
+    encoder         : Lavf60.16.100
+  Stream #0:0: Audio: pcm_s16le, 192000 Hz, stereo, s16, 6144 kb/s
+    Metadata:
+      encoder         : Lavc60.31.102 pcm_s16le
+size=       0kB time=00:00:00.00 bitrate=N/A speed=   0x    
+size=N/A time=00:00:09.20 bitrate=N/A speed=  17x    
+[out#0/null @ 0x55ba38e0aa40] video:0kB audio:10672kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+size=N/A time=00:00:11.40 bitrate=N/A speed=  16x    
+[Parsed_loudnorm_0 @ 0x55ba38e50e00] 
+{
+	"input_i" : "-15.99",
+	"input_tp" : "-4.37",
+	"input_lra" : "2.00",
+	"input_thresh" : "-26.75",
+	"output_i" : "-15.86",
+	"output_tp" : "-2.06",
+	"output_lra" : "1.70",
+	"output_thresh" : "-26.60",
+	"normalization_type" : "dynamic",
+	"target_offset" : "-0.14"
+}

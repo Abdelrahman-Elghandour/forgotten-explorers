@@ -1,0 +1,44 @@
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/home/ubuntu/explorers/audio/intro-original.m4a':
+  Metadata:
+    major_brand     : M4A 
+    minor_version   : 0
+    compatible_brands: M4A isommp42
+    creation_time   : 2026-11-13T21:24:45.000000Z
+    iTunSMPB        :  00000000 00000840 000003C0 00000000000A6000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+  Duration: 00:00:14.23, start: 0.044000, bitrate: 127 kb/s
+  Stream #0:0[0x1](und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 123 kb/s (default)
+    Metadata:
+      creation_time   : 2026-11-13T21:24:45.000000Z
+      handler_name    : Core Media Audio
+      vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:0 -> #0:0 (aac (native) -> pcm_s24le (native))
+Output #0, wav, to '/home/ubuntu/explorers/audio/intro-studio.wav':
+  Metadata:
+    major_brand     : M4A 
+    minor_version   : 0
+    compatible_brands: M4A isommp42
+    iTunSMPB        :  00000000 00000840 000003C0 00000000000A6000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+    ISFT            : Lavf60.16.100
+  Stream #0:0(und): Audio: pcm_s24le ([1][0][0][0] / 0x0001), 48000 Hz, stereo, s32, 2304 kb/s (default)
+    Metadata:
+      creation_time   : 2026-11-13T21:24:45.000000Z
+      handler_name    : Core Media Audio
+      vendor_id       : [0][0][0][0]
+      encoder         : Lavc60.31.102 pcm_s24le
+size=       0kB time=00:00:00.00 bitrate=N/A speed=   0x    
+[out#0/wav @ 0x564c5be88480] video:0kB audio:4002kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: 0.002489%
+size=    4002kB time=00:00:14.16 bitrate=2315.3kbits/s speed=41.7x    
+[Parsed_loudnorm_7 @ 0x564c5bf77780] 
+{
+	"input_i" : "-25.56",
+	"input_tp" : "-14.05",
+	"input_lra" : "1.90",
+	"input_thresh" : "-36.17",
+	"output_i" : "-15.90",
+	"output_tp" : "-4.38",
+	"output_lra" : "1.90",
+	"output_thresh" : "-26.57",
+	"normalization_type" : "linear",
+	"target_offset" : "-0.10"
+}

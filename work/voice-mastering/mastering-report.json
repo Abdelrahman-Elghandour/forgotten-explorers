@@ -1,0 +1,35 @@
+{
+  "source": "audio/intro-original.m4a",
+  "master": "audio/intro-studio.wav",
+  "sample_rate": 48000,
+  "channels": 2,
+  "duration_seconds": 14.229333333333335,
+  "filter_chain": "highpass=f=65:p=2,afftdn=nr=4:nf=-65:tn=0,equalizer=f=125:t=q:w=0.8:g=1.0,equalizer=f=320:t=q:w=1.0:g=-2.0,equalizer=f=2800:t=q:w=0.8:g=1.8,deesser=i=0.16:m=0.35:f=0.5,acompressor=threshold=0.075:ratio=1.8:attack=12:release=140:knee=2.828:makeup=1:detection=rms",
+  "loudness_target_lufs": -16,
+  "true_peak_ceiling_dbtp": -1.5,
+  "pre_normalization": {
+    "input_i": "-25.67",
+    "input_tp": "-14.03",
+    "input_lra": "2.00",
+    "input_thresh": "-36.31",
+    "output_i": "-15.85",
+    "output_tp": "-2.07",
+    "output_lra": "1.70",
+    "output_thresh": "-26.56",
+    "normalization_type": "dynamic",
+    "target_offset": "-0.15"
+  },
+  "verified": {
+    "input_i": "-15.99",
+    "input_tp": "-4.37",
+    "input_lra": "2.00",
+    "input_thresh": "-26.75",
+    "output_i": "-15.86",
+    "output_tp": "-2.06",
+    "output_lra": "1.70",
+    "output_thresh": "-26.60",
+    "normalization_type": "dynamic",
+    "target_offset": "-0.14"
+  },
+  "timing": "25 ms measured DSP latency compensated. No original cuts, removed pauses, time-stretch or pitch/voice replacement. Original t=0 retained."
+}

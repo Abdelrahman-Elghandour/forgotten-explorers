@@ -17,7 +17,7 @@
       var video = videoRef.current;
       if (!video || !global.Audio) return undefined;
       var local = data.sources || [voiceSource || "./audio/intro.mp3", "./audio/intro.ogg"];
-      var hosted = ["/manus-storage/intro_c88e9ecb.mp3", "/manus-storage/intro_81146f08.ogg"];
+      var hosted = ["/manus-storage/intro_916e1704.mp3", "/manus-storage/intro_7164e348.ogg"];
       var host = global.location && global.location.hostname;
       var isLocal = host === "localhost" || host === "127.0.0.1" || global.location.protocol === "file:";
       var sources = isLocal ? local.concat(hosted) : hosted.concat(local);
