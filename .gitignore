@@ -7,3 +7,4 @@ node_modules/
 !.env.example
 video_upload.json
 logo_upload.json
+tests/captures/

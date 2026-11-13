@@ -13,11 +13,20 @@ const clean = node => JSON.parse(JSON.stringify(node, (key, value) =>
 const parse = html => Babel.transform(inline(html), {presets:['react'], ast:true, code:false}).ast.program;
 const before = parse(original), after = parse(updated);
 const stable = program => program.body.filter(node => {
-  if (node.type === 'FunctionDeclaration') return node.id.name !== 'ForgottenExplorers';
+  if (node.type === 'FunctionDeclaration') return !['ForgottenExplorers', 'Space'].includes(node.id.name);
   if (node.type === 'VariableDeclaration') return !node.declarations.some(d => d.id.name === 'ac' || d.id.name === 'root');
   return false;
 }).map(clean);
 assert.deepEqual(stable(after), stable(before), 'Data, feature components and audio synthesis must remain unchanged');
+
+// The canvas keeps its exact geometry, palette and planet set; only the intro freeze was added.
+for (const fragment of ['const rx = o.d * R, ry = rx * 0.38;', 'rgba(139,211,255,.14)', 'rgba(224,176,122,.75)',
+  '"#fff7c2"', '"#ffb347"', 'Math.min(W, H * 1.5) / 2 * 0.95', 'o.a0 + t * o.sp']) {
+  assert(original.includes(fragment), `baseline canvas fragment: ${fragment}`);
+  assert(updated.includes(fragment), `canvas fragment preserved: ${fragment}`);
+}
+assert(/frozenRef\.current \? 0 : mouse\.current\.x/.test(updated), 'Frozen canvas ignores parallax so the frame matches the film');
+assert(/if \(!frozenRef\.current\) t \+= 0\.004;/.test(updated), 'Frozen canvas holds t = 0, the film’s final frame');
 const featureMarkup = html => {
   const start = html.indexOf('      {/* MISSION CONSOLE */}');
   const oldEnd = html.indexOf('      {!started && (');
@@ -30,6 +39,8 @@ assert(updated.includes('<window.CinematicIntro'), 'New video component is wired
 assert(updated.includes('setStarted(true)'), 'Solar system activated during transition');
 assert(updated.includes('setView("solar")'), 'Handoff explicitly restores solar view');
 assert(updated.includes('onComplete={() => setIntroVisible(false)}'), 'Overlay unmounts after transition');
+assert(updated.includes('frozen={introVisible && !introHandoff}'), 'Live canvas renders behind the video and unfreezes at handoff');
+assert(updated.includes('inert={introVisible && !introHandoff ?'), 'Canvas becomes interactive during the dissolve');
 assert(updated.includes('unlockAudio(); play("planet")'), 'Planet interaction explicitly unlocks Web Audio');
 assert(updated.includes('window.addEventListener("pointerdown", firstInteraction, true)'), 'Post-intro interaction unlock remains registered');
 assert(updated.includes('window.addEventListener("keydown", firstInteraction, true)'), 'Keyboard unlock supported');

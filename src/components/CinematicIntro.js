@@ -5,6 +5,8 @@
   if (!React) return;
 
   var h = React.createElement;
+  var DISSOLVE_MS = 1200;
+  var DISSOLVE_LEAD = 1.2; // seconds before the end where the canvas takes over
 
   function isIntroControl(target) {
     var node = target;
@@ -30,7 +32,7 @@
     var lang = props.lang === "ar" ? "ar" : "en";
     var isArabic = lang === "ar";
     var localSource = "./videos/intro.mp4";
-    var hostedSource = "/manus-storage/intro_3534c0b9.mp4";
+    var hostedSource = "/manus-storage/intro_73087b23.mp4";
     var location = global.location || {};
     var isLocalHost = location.protocol === "file:" || location.hostname === "localhost" || location.hostname === "127.0.0.1";
     var sources = isLocalHost ? [localSource, hostedSource] : [hostedSource, localSource];
@@ -64,6 +66,7 @@
     var completedRef = React.useRef(false);
     var playEpochRef = React.useRef(0);
     var completionTimerRef = React.useRef(null);
+    var volumeRampRef = React.useRef(null);
     var sourceErrorRef = React.useRef(-1);
     var fallbackUsedRef = React.useRef(false);
     var removeInteractionListenersRef = React.useRef(function () {});
@@ -169,11 +172,20 @@
       }
 
       var video = videoRef.current;
+      // The video keeps running underneath while it fades, so motion never stops mid-dissolve.
       if (video) {
-        video.pause();
-        video.volume = 0;
+        var startVolume = video.volume;
+        var startedAt = Date.now();
+        volumeRampRef.current = global.setInterval(function () {
+          var progress = Math.min(1, (Date.now() - startedAt) / DISSOLVE_MS);
+          try { video.volume = Math.max(0, startVolume * (1 - progress)); } catch (error) { /* detached */ }
+          if (progress >= 1) {
+            global.clearInterval(volumeRampRef.current);
+            volumeRampRef.current = null;
+            try { video.pause(); } catch (error) { /* detached */ }
+          }
+        }, 60);
       }
-      setIsMuted(true);
       setFading(true);
 
       if (typeof beginTransitionRef.current === "function") {
@@ -185,7 +197,7 @@
         if (typeof completeRef.current === "function") {
           completeRef.current();
         }
-      }, 800);
+      }, DISSOLVE_MS);
     }
 
     function handleSkip() {
@@ -241,7 +253,13 @@
     }
 
     function handleTimeUpdate(event) {
-      setCurrentTime(Number(event.currentTarget.currentTime) || 0);
+      var video = event.currentTarget;
+      var time = Number(video.currentTime) || 0;
+      setCurrentTime(time);
+      var length = Number(video.duration);
+      if (!completedRef.current && isFinite(length) && length > DISSOLVE_LEAD && time >= length - DISSOLVE_LEAD) {
+        finishIntro();
+      }
     }
 
     function handleVolumeChange(event) {
@@ -305,6 +323,10 @@
         if (completionTimerRef.current) {
           global.clearTimeout(completionTimerRef.current);
           completionTimerRef.current = null;
+        }
+        if (volumeRampRef.current) {
+          global.clearInterval(volumeRampRef.current);
+          volumeRampRef.current = null;
         }
         removeInteractionListenersRef.current();
         var video = videoRef.current;

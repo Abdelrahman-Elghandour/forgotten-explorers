@@ -8,7 +8,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
   <script src="./src/components/CinematicIntro.js"></script>
   <style>
     html, body, #root {
@@ -236,8 +236,12 @@ const ORBITS = [
   { k: "titan", d: 0.68, sp: 0.4, r: 17, c: "#e0b07a", a0: 2, ring: true },
   { k: "deep", d: 0.86, sp: 0.15, r: 6, c: "#a78bfa", a0: 4 },
 ];
-function Space({ solar, onPick, labelRef }) {
+function Space({ solar, onPick, labelRef, frozen, labelAlpha }) {
   const cv = useRef(), pos = useRef([]), mouse = useRef({ x: 0, y: 0 });
+  // While the intro plays, the canvas holds t = 0, the exact frame the film ends on.
+  const frozenRef = useRef(frozen === true), alphaRef = useRef(labelAlpha == null ? 1 : labelAlpha);
+  frozenRef.current = frozen === true;
+  alphaRef.current = labelAlpha == null ? 1 : labelAlpha;
   useEffect(() => {
     const c = cv.current, g = c.getContext("2d"); let W, H, raf, t = 0, shoot = null;
     const stars = Array.from({ length: 300 }, () => ({ x: Math.random(), y: Math.random(), z: Math.random() * 0.9 + 0.1, p: Math.random() * 6 }));
@@ -249,13 +253,14 @@ function Space({ solar, onPick, labelRef }) {
       g.shadowColor = col; g.shadowBlur = 22; g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.shadowBlur = 0;
     };
     const draw = () => {
-      t += 0.004; g.clearRect(0, 0, W, H);
-      const mx = mouse.current.x, my = mouse.current.y;
+      if (!frozenRef.current) t += 0.004;
+      g.clearRect(0, 0, W, H);
+      const mx = frozenRef.current ? 0 : mouse.current.x, my = frozenRef.current ? 0 : mouse.current.y;
       stars.forEach((s) => {
         g.fillStyle = `rgba(255,255,255,${(0.25 + s.z * 0.6) * (0.7 + 0.3 * Math.sin(t * 40 + s.p))})`;
         g.fillRect((((s.x * W - mx * 30 * s.z) % W) + W) % W, (((s.y * H - my * 30 * s.z) % H) + H) % H, s.z * 2, s.z * 2);
       });
-      if (!shoot && Math.random() < 0.004) shoot = { x: Math.random() * W, y: Math.random() * H * 0.4, l: 0 };
+      if (!frozenRef.current && !shoot && Math.random() < 0.004) shoot = { x: Math.random() * W, y: Math.random() * H * 0.4, l: 0 };
       if (shoot) { const gr = g.createLinearGradient(shoot.x, shoot.y, shoot.x - 90, shoot.y - 45); gr.addColorStop(0, "#fff"); gr.addColorStop(1, "transparent");
         g.strokeStyle = gr; g.beginPath(); g.moveTo(shoot.x, shoot.y); g.lineTo(shoot.x - 90, shoot.y - 45); g.stroke(); shoot.x += 14; shoot.y += 7; if (++shoot.l > 45) shoot = null; }
       pos.current = [];
@@ -275,7 +280,9 @@ function Space({ solar, onPick, labelRef }) {
             ball(mxp, myp, 5.5, "#c4c8d4"); pos.current.push({ k: o.k, x: mxp, y: myp, r: 24 });
           } else { ball(x, y, o.r, o.c); pos.current.push({ k: o.k, x, y, r: o.r + 14 }); }
           g.fillStyle = "#e5e7eb"; g.font = "700 14px Tajawal, sans-serif"; g.textAlign = "center";
+          g.globalAlpha = alphaRef.current;
           g.fillText(labelRef.current(o.k), x, y + o.r + 24);
+          g.globalAlpha = 1;
         });
       }
       raf = requestAnimationFrame(draw);
@@ -463,6 +470,7 @@ function ForgottenExplorers() {
   const [lang, setLang] = useState("ar"), [read, setRead] = useState(false);
   const [started, setStarted] = useState(false), [view, setView] = useState("solar");
   const [introVisible, setIntroVisible] = useState(true);
+  const [introHandoff, setIntroHandoff] = useState(false);
   const audioUnlockedRef = useRef(false), startedRef = useRef(false);
   startedRef.current = started;
   const [sel, setSel] = useState(null), [tab, setTab] = useState("diary"), [part, setPart] = useState(null), [dust, setDust] = useState(0);
@@ -530,6 +538,7 @@ function ForgottenExplorers() {
     };
   }, []);
   const beginIntroTransition = () => {
+    setIntroHandoff(true);
     startedRef.current = true;
     setView("solar");
     setStarted(true);
@@ -580,8 +589,8 @@ function ForgottenExplorers() {
         @keyframes kb{from{transform:scale(1.04) translate(0,0)}to{transform:scale(1.14) translate(-1.5%,-1%)}} @keyframes eq{0%,100%{transform:scaleY(.25)}50%{transform:scaleY(1)}}
         .fin{animation:fin 1s both} @media (prefers-reduced-motion:reduce){*{animation:none!important}}`}</style>
 
-      <div inert={introVisible ? "" : undefined} aria-hidden={introVisible ? true : undefined}>
-      <Space solar={view === "solar"} onPick={fly} labelRef={labelRef} />
+      <div inert={introVisible && !introHandoff ? "" : undefined} aria-hidden={introVisible && !introHandoff ? true : undefined}>
+      <Space solar={view === "solar"} onPick={fly} labelRef={labelRef} frozen={introVisible && !introHandoff} labelAlpha={introHandoff || !introVisible ? 1 : 0} />
       {warp && <div className="fixed inset-0 z-40 pointer-events-none" style={{ background: "radial-gradient(circle, #fff 0, #7cc4ff 12%, transparent 45%)", animation: "wp 1s ease-in forwards" }} />}
 
       <header className="fixed top-0 inset-x-0 z-20 p-3 flex items-center justify-between gap-2 flex-wrap">
