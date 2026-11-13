@@ -14,6 +14,12 @@ The rebuilt intro is 28.000 s, 672 frames, 1920 × 1080 at 24 fps, H.264 with th
 
 `node tests/preservation.cjs` passes full JSX parsing and semantic equality of every original dataset, dictionary and feature component except the intentionally changed controller and canvas; the canvas keeps its exact orbit constants, colours and sun gradient. Mission-console, blueprint, simulator, lessons, last-message, time-machine, quiz and certificate markup compares unchanged.
 
+## Selected craft view
+
+`tests/browser_craft.py` reaches a planet, opens Opportunity and confirms five telemetry rows (`تاريخ الإطلاق`, `آخر اتصال`, `العمر مقابل المخطط`, `المسافة`, `أهم اكتشاف`) with their values, the diary, three actions including `المحاكي`, the narration player, and a console that opens on `التفكيك`. It repeats the pass in English and at 390 × 844. The hero upgraded from a 640 px source to `PIA20285~orig.jpg` at 1024 px (Opportunity) and to `PIA23791~orig.jpg` at 2245 px on Mars, proving the `~large` → `~orig` fallback works where NASA blocks the large size. A craft without a recording shows the quiet "no recording" notice instead of failing, and no page errors were raised in any pass.
+
+The console sheet previously failed to centre because its entrance animation reset the `-translate-x-1/2` it relied on; it now centres with auto margins. That one class change is the only edit inside the console.
+
 ## Known limits
 
-A browser autoplay policy can still start the film muted; the audio control and any first interaction unmute it. On narrow portrait viewports the film's final framing is larger than the canvas's compact system, so the dissolve reads as a settle rather than an exact pixel match. Scientific text, mission data and missing-recording fallbacks were intentionally left as supplied.
+A browser autoplay policy can still start the film muted; the audio control and any first interaction unmute it. On narrow portrait viewports the film's final framing is larger than the canvas's compact system, so the dissolve reads as a settle rather than an exact pixel match. Scientific text, mission data and missing-recording fallbacks were intentionally left as supplied. Hero imagery is whatever NASA asset the app's own query or pinned id resolves to, so an occasional photograph is a detail shot rather than a full-portrait of the craft; the framing never crops it further.

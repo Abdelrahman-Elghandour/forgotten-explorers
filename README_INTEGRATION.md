@@ -16,6 +16,20 @@ Measured in a real browser at 1920 × 1080, the Sun in the film's last frame and
 
 Web Audio is created and resumed only inside a real gesture — Skip, the audio control, a planet click, or the first pointer/keyboard interaction. Ambience starts at handoff when audio is already unlocked, otherwise on the first interaction afterwards. A browser-imposed muted autoplay never becomes the visitor's mute preference.
 
+## Selected spacecraft view
+
+Choosing a craft on a planet surface opens a full-bleed cinematic stage rather than the old cropped photo with a small card. The hero is the highest-resolution NASA asset available: it starts from the image already on screen, measures its natural width against `innerWidth × devicePixelRatio`, and only then upgrades — `~large` first, `~orig` as the fallback (several NASA assets 403 on `~large`, so the fallback matters). Every candidate the browser cannot load is skipped, and the loaded picture cross-fades in over a blurred, darkened copy of itself, so a slow connection shows a continuous image instead of a blank frame.
+
+The hero is `object-fit: contain` inside an inset frame, so the whole rover or lander is visible and never cropped, with a warm halo, a 22 px rounded plate edge and a 54-second drift (disabled under `prefers-reduced-motion`). Three stacked gradients — bottom, HUD-side and a radial vignette — darken the edges and the panel side while leaving the craft luminous, so the glass HUD stays readable over any photograph.
+
+The HUD shows everything at once, no chips or extra clicks: bilingual mission name (the other language shown beneath), tagline and era, then a five-cell telemetry grid for `تاريخ الإطلاق`, `آخر اتصال`, `العمر مقابل المخطط`, `المسافة` and `أهم اكتشاف`, then the first-person diary, then three action tiles that open the console directly on `التفكيك`, `المحاكي` (only for craft where the simulator applies) and `الحدود التالية`. The NASA credit and the photo-replacement control stay in the footer. Wide screens get a right-hand column; narrow screens get a bottom sheet with the craft selector docked beside it.
+
+## Voice-over slots
+
+`VOICE_TRACKS` in `index.html` maps every mission id — `opp, spi, vik, ins, pat, eag, sur, lun, ven, huy, voy, kep` — to `./audio/<id>.mp3` then `./audio/<id>.ogg`. Dropping a file in place is all that is needed; the player tries each extension, reports missing recordings with a quiet notice, and needs no code change. The player itself shows play/pause, an animated equaliser whose bars only move for the craft actually speaking, a replay control, and the track id. Missions that already ship a recording (Opportunity, Spirit, InSight, Pathfinder, Spirit-era, Eagle) play immediately.
+
+`INTRO_VOICE` (`./audio/intro.mp3`) is the dedicated slot for a narration of the opening film: when the file exists the intro plays it instead of the score and keeps it in step with the video; when it does not, the film behaves exactly as before.
+
 ## Which supplied application is used
 
 `MANUS_HANDOFF.md` identifies the complete original `!started` application, supplied as `original_step8.html`, as the authoritative feature-complete source. That version contains the NASA image API and uploads, the panoramic Surface explorer, diary, blueprint, dust simulator, lessons, time machine, last-message dramatization and PNG certificate. It is the main `index.html`, with only the intro, canvas freeze and audio-unlock wiring changed.
@@ -28,6 +42,6 @@ Babel Standalone is pinned to 7.26.4 in both HTML entry points. The unpinned CDN
 
 `src/components/CinematicIntro.js` and `cinematic-intro.css` own the opening layer. `index.html` wires the freeze, the handoff and the gesture-gated audio. `serve.py` keeps the local launcher with a configurable port and MP4 byte-range support. `build_static.py` writes `dist/` for static hosting.
 
-`tests/preservation.cjs` parses the full JSX and compares every original dataset, dictionary and feature component against `original_step8.html`, plus the unchanged mission-console markup and the canvas geometry constants. `tests/intro_runtime.cjs` drives the player against a mock React/browser runtime: autoplay fallback, policy-versus-explicit mute, first interaction, late-promise races, the 1.2-second pre-end dissolve, Skip, and listener/timer cleanup. `tests/browser_seam.py` is the real-browser check described above and writes its captures to `tests/captures/`.
+`tests/preservation.cjs` parses the full JSX and compares every original declaration against `original_step8.html` (additions are allowed, rewrites of `Surface`, `Space` and the controller are the only exceptions), then checks the craft view, its telemetry, the three console triggers, the mask, the drift and every voice slot. `tests/browser_craft.py` drives a real browser through planet → craft → HUD → console tab in Arabic, English and a 390 px mobile viewport. `tests/intro_runtime.cjs` drives the player against a mock React/browser runtime: autoplay fallback, policy-versus-explicit mute, first interaction, late-promise races, the 1.2-second pre-end dissolve, Skip, and listener/timer cleanup. `tests/browser_seam.py` is the real-browser check described above and writes its captures to `tests/captures/`.
 
 The MP4 is an AI-generated fictional scientific visualization, not actual NASA mission footage. No public deployment is performed by this package.

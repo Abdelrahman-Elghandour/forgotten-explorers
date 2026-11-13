@@ -1,0 +1,47 @@
+        /* ---- selected craft: cinematic stage ---- */
+        .surface-root{--panel:0px;--sheet:0px}
+        @media(min-width:1024px){.surface-root{--panel:clamp(336px,31vw,430px)}}
+        @media(max-width:1023px){.surface-root{--sheet:min(52vh,468px)}}
+        .craft-stage{position:absolute;inset:0;z-index:6;overflow:hidden;background:#05070d}
+        .craft-media{position:absolute;inset:0 var(--panel) var(--sheet) 0;overflow:hidden}
+        .craft-plate{position:absolute;inset:-9%;background-size:cover;background-position:center;filter:blur(36px) saturate(1.25) brightness(.46);transform:scale(1.12)}
+        .craft-halo{position:absolute;left:50%;top:46%;width:min(86%,940px);aspect-ratio:1/1;transform:translate(-50%,-50%);background:radial-gradient(closest-side,rgba(255,198,132,.26),rgba(124,180,255,.13) 56%,transparent 78%);filter:blur(42px);pointer-events:none}
+        .craft-hero{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:50% 47%;opacity:0;transition:opacity .85s ease;filter:drop-shadow(0 26px 54px rgba(0,0,0,.62)) saturate(1.05) contrast(1.04);animation:drift 54s ease-in-out infinite alternate}
+        .craft-hero.on{opacity:1}
+        @keyframes drift{from{transform:scale(1.015) translate3d(-.7%,-.4%,0)}to{transform:scale(1.055) translate3d(.7%,.5%,0)}}
+        .craft-mask{position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top,#05070d 0%,rgba(5,7,13,.94) 9%,rgba(5,7,13,.42) 29%,rgba(5,7,13,0) 54%),linear-gradient(to left,rgba(5,7,13,.96) 0%,rgba(5,7,13,.58) 15%,rgba(5,7,13,0) 39%),radial-gradient(125% 102% at 40% 42%,rgba(5,7,13,0) 40%,rgba(5,7,13,.5) 80%,rgba(5,7,13,.86) 100%)}
+        @media(max-width:1023px){.craft-mask{background:linear-gradient(to top,#05070d 0%,rgba(5,7,13,.93) 24%,rgba(5,7,13,.36) 50%,rgba(5,7,13,0) 72%),radial-gradient(120% 88% at 50% 40%,rgba(5,7,13,0) 38%,rgba(5,7,13,.6) 88%)}}
+        .craft-empty{position:absolute;inset:auto 0 28% 0;text-align:center;font-size:13px;color:rgba(226,238,255,.8);padding:0 22px}
+        .craft-hud{position:absolute;z-index:2;display:flex;flex-direction:column;min-height:0;color:#eef6ff;background:linear-gradient(168deg,rgba(15,23,42,.9),rgba(5,8,16,.95));backdrop-filter:blur(26px) saturate(1.28);-webkit-backdrop-filter:blur(26px) saturate(1.28);border:1px solid rgba(255,255,255,.12);box-shadow:0 40px 120px rgba(0,0,0,.62),inset 0 1px 0 rgba(255,255,255,.1)}
+        @media(min-width:1024px){.craft-hud{top:62px;right:0;bottom:0;width:var(--panel);border-right:0;border-top-left-radius:26px;border-bottom-left-radius:26px}}
+        @media(max-width:1023px){.craft-hud{left:8px;right:8px;bottom:72px;height:var(--sheet);border-radius:22px}}
+        .craft-hud__head{padding:15px 16px 12px;display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid rgba(255,255,255,.08);background:linear-gradient(120deg,rgba(255,255,255,.07),transparent 70%)}
+        .craft-eyebrow{font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;font-weight:800;color:rgba(178,208,238,.66)}
+        .craft-title{font-size:clamp(21px,2.1vw,29px);font-weight:800;line-height:1.12;letter-spacing:-.01em;margin-top:3px}
+        .craft-alt{font-size:11.5px;font-weight:700;color:rgba(198,222,248,.62);margin-top:2px;letter-spacing:.02em}
+        .craft-tag{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:3px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);font-size:11px;font-weight:800;color:#e9f4ff}
+        .craft-hud__body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:14px 16px 18px;display:flex;flex-direction:column;gap:12px}
+        .craft-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+        .craft-cell{min-width:0;padding:8px 10px;border-radius:13px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08)}
+        .craft-cell--wide{grid-column:1/-1}
+        .craft-cell dt{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(168,198,232,.75)}
+        .craft-cell dd{margin-top:3px;font-size:13px;font-weight:700;line-height:1.5;color:#f3f9ff;word-break:break-word}
+        .craft-diary{padding:11px 13px;border-radius:15px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.07)}
+        .craft-quote{margin-top:6px;font-size:14px;line-height:2;color:#e8f0fe}
+        .craft-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+        .craft-act{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:9px 4px;border-radius:13px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);font-size:10.5px;font-weight:800;color:#e9f3ff;transition:transform .2s,background .2s,border-color .2s}
+        .craft-act:hover{background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.28);transform:translateY(-1px)}
+        .craft-voice{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:15px;background:linear-gradient(120deg,rgba(255,255,255,.1),rgba(255,255,255,.035));border:1px solid rgba(255,255,255,.13)}
+        .craft-voice__btn{flex:0 0 40px;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--c);color:#05070d;box-shadow:0 8px 22px rgba(0,0,0,.4)}
+        .craft-voice__mid{flex:1;min-width:0;display:flex;align-items:center;gap:9px}
+        .craft-wave{display:flex;align-items:flex-end;gap:3px;height:19px;flex:0 0 auto}
+        .craft-wave i{display:block;width:3px;height:100%;border-radius:2px;background:var(--c);opacity:.55;transform:scaleY(.26);transform-origin:bottom;transition:transform .35s}
+        .craft-voice.on .craft-wave i{opacity:1;animation:eq 1.15s ease-in-out infinite}
+        .craft-voice__label{font-size:12.5px;font-weight:800;line-height:1.25}
+        .craft-voice__hint{font-size:10px;color:rgba(175,200,232,.72);margin-top:1px}
+        .craft-voice__re{flex:0 0 32px;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15)}
+        .craft-voice__re:hover{background:rgba(255,255,255,.16)}
+        .craft-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10.5px;color:rgba(176,200,230,.75)}
+        .surface-dock{position:absolute;left:0;right:0;bottom:12px;z-index:10;padding-inline:12px;display:flex;align-items:center;gap:8px;transition:right .5s cubic-bezier(.2,.8,.2,1)}
+        @media(min-width:1024px){.surface-focused .surface-dock{right:var(--panel)}}
+        @media(prefers-reduced-motion:reduce){.craft-hero{animation:none}.craft-voice.on .craft-wave i{animation:none;transform:scaleY(.8)}}

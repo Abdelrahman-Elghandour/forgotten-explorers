@@ -84,6 +84,9 @@
     const Lightbulb = (p) => <Icon {...p}><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></Icon>;
     const Eye = (p) => <Icon {...p}><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></Icon>;
     const Database = (p) => <Icon {...p}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></Icon>;
+    const Play = (p) => <Icon {...p}><polygon points="6 3 20 12 6 21 6 3"/></Icon>;
+    const Pause = (p) => <Icon {...p}><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></Icon>;
+    const Replay = (p) => <Icon {...p}><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 4 3 10 9 10"/></Icon>;
     const Wind = (p) => <Icon {...p}><path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/></Icon>;
 
 /* ============ DATA ============ */
@@ -210,6 +213,10 @@ const LESSON = {
   kep: ["وجود كواكب كثيرة يعني أن السؤال التالي: هل في أحدها حياة؟", "So many planets raises the next question: is anyone living on one?"],
 };
 const SL = { ar: ["تاريخ الإطلاق", "آخر اتصال", "العمر مقابل المخطط", "المسافة", "أهم اكتشاف"], en: ["Launch", "Last contact", "Lifespan vs plan", "Distance", "Key discovery"] };
+/* Voice-over slots: drop ./audio/<id>.mp3 or .ogg in place and it plays — no UI change needed. */
+const VOICE_IDS = ["opp", "spi", "vik", "ins", "pat", "eag", "sur", "lun", "ven", "huy", "voy", "kep", "intro"];
+const VOICE_TRACKS = Object.fromEntries(VOICE_IDS.map((id) => [id, [`./audio/${id}.mp3`, `./audio/${id}.ogg`]]));
+const INTRO_VOICE = "./audio/intro.mp3";
 const T = {
   ar: { title: "مستكشفون نسيهم الزمن", sub: "مركبات تركناها في الفضاء، وكل واحدة عندها قصة تحكيها لك.", enter: "ادخل الفضاء", hint: "اضغط على أي كوكب أو قمر للسفر إليه", back: "المجموعة الشمسية", time: "آلة الزمن", quiz: "الاختبار", diary: "المذكرات", blue: "التفكيك", sim: "المحاكي", lesson: "الحدود التالية", listen: "استمع للمذكرات", stop: "إيقاف", last: "آخر رسالة", src: "المصادر", dust: "كمية الغبار على الألواح", power: "الطاقة المتبقية", how: "كيف عمل؟", why: "لماذا صمت؟", tap: "اضغط على أحد المكونات", lm1: "بطاريتي منخفضة…", lm2: "الأجهزة تنطفئ واحدًا واحدًا.", lm3: "شكرًا لأنك سمعت قصتي.", get: "حمّل الشهادة", name: "اكتب اسمك", read: "قراءة مريحة", srcNote: "تأكد من شروط الاستخدام لكل صورة قبل نشرها.", lesNote: "ماذا علّمتنا للمهمة القادمة؟" },
   en: { title: "Forgotten Explorers", sub: "Spacecraft we left behind — each has a story to tell you.", enter: "Enter space", hint: "Click any planet or moon to travel there", back: "Solar System", time: "Time Machine", quiz: "Quiz", diary: "Diary", blue: "Blueprint", sim: "Simulator", lesson: "Next Frontier", listen: "Listen", stop: "Stop", last: "Last message", src: "Sources", dust: "Dust on the panels", power: "Power left", how: "How it worked", why: "Why it went silent", tap: "Tap a component", lm1: "My battery is low…", lm2: "Instruments are switching off, one by one.", lm3: "Thank you for hearing my story.", get: "Download certificate", name: "Your name", read: "Easy reading", srcNote: "Check each image's usage terms before publishing.", lesNote: "What did it teach the next mission?" },
@@ -390,22 +397,57 @@ const CraftIcon = ({ c, on, im, real }) => {
   return <img src={src} alt="" referrerPolicy="no-referrer" onError={() => setBad((b) => b + 1)} className="object-cover rounded-full border-2" style={{ width: w, height: w, borderColor: c, boxShadow: `0 0 ${on ? 22 : 10}px ${c}`, transition: "all .7s" }} />;
 };
 const Eq = () => <span aria-hidden className="flex items-end gap-[3px] h-5">{[0, 1, 2, 3].map((i) => <i key={i} className="w-[3px] h-full rounded-full accbg" style={{ transformOrigin: "bottom", animation: `eq .${6 + i}s ease-in-out ${i * 0.1}s infinite` }} />)}</span>;
-function Surface({ B, name, list, nm, tg, en, onOpen, play, imgs, onUpload, onTell, onToggle, speaking, notice, real }) {
-  const [pan, setPan] = useState(0.3), [focus, setFocus] = useState(null), [chip, setChip] = useState(null), [drag, setDrag] = useState(null), [bad, setBad] = useState(0);
+function Surface({ B, name, list, nm, tg, en, onOpen, play, imgs, onUpload, onTell, onToggle, onReplay, speaking, voiceId, notice, real }) {
+  const [pan, setPan] = useState(0.3), [focus, setFocus] = useState(null), [drag, setDrag] = useState(null);
+  const [hi, setHi] = useState(0), [loaded, setLoaded] = useState(false), [gone, setGone] = useState(false), [naturalW, setNaturalW] = useState(0);
   const box = useRef(), moved = useRef(false);
   const far = useMemo(() => hill(1, 7, 55), []), near = useMemo(() => hill(4, 4, 78), []);
   const px = (m) => (8 + m.x * 0.84) / 100, clamp = (v) => Math.max(0, Math.min(1, v));
   const layer = (w) => ({ width: `${w}%`, transform: `translateX(-${(pan * (w - 100)) / w * 100}%)`, transition: drag ? "none" : "transform .9s cubic-bezier(.2,.8,.2,1)" });
-  const go = (m) => { play("click"); moved.current = false; setFocus(m.id); setChip(null); setPan(clamp((px(m) * 2.5 - 0.5) / 1.5)); onTell(m); };
+  const go = (m) => { play("click"); moved.current = false; setFocus(m.id); setPan(clamp((px(m) * 2.5 - 0.5) / 1.5)); onTell(m); };
   const step = (d) => { const i = list.findIndex((m) => m.id === focus); go(list[(i + d + list.length) % list.length]); };
   const fm = list.find((m) => m.id === focus);
-  const live = speaking;
   const im = fm ? imgs[fm.id] : null;
-  useEffect(() => setBad(0), [focus, im && im.u]);
-  const bgSrc = im ? (bad === 0 ? im.u : bad === 1 ? im.f : null) : null, cap = bad === 1 ? { t: im && im.ft, i: im && im.fi } : { t: im && im.t, i: im && im.i };
-  const chips = fm ? [[Clock, 2], [Rocket, 3], [Lightbulb, 4], [Radio, 1]] : [];
+  const live = !!fm && speaking && voiceId === fm.id;
+
+  /* Highest quality first: the mirrored copy, then NASA's ~large, then ~orig for dense screens. */
+  const chain = useMemo(() => {
+    if (!im) return [];
+    const out = [];
+    const push = (s) => { if (s && out.indexOf(s) < 0) out.push(s); };
+    const atSize = (s, size) => (s || "").replace(/~(thumb|small|medium|large|orig)(?=\.)/, size);
+    push(im.u);
+    if (im.f) { push(atSize(im.f, "~large")); push(atSize(im.f, "~orig")); }
+    return out;
+  }, [im && im.u, im && im.f]);
+  const key = chain.join("|");
+
+  useEffect(() => { setHi(0); setLoaded(false); setGone(false); setNaturalW(0); }, [key]);
+  useEffect(() => { setLoaded(false); setNaturalW(0); }, [key, hi]);
+  // Upgrade only when the picture actually on screen is too small for this display,
+  // walking ~large then ~orig so a missing size falls through instead of showing nothing.
+  useEffect(() => {
+    if (!naturalW || chain.length < 2 || hi + 1 >= chain.length) return;
+    const want = Math.min(window.innerWidth || 1600, 1600) * Math.min(window.devicePixelRatio || 1, 2);
+    if (naturalW >= want * 0.95) return;
+    let cancelled = false;
+    const tryAt = (i) => {
+      if (cancelled || i >= chain.length) return;
+      const probe = new Image();
+      probe.referrerPolicy = "no-referrer";
+      probe.onload = () => { if (!cancelled) setHi(i); };
+      probe.onerror = () => { if (!cancelled) tryAt(i + 1); };
+      probe.src = chain[i];
+    };
+    tryAt(hi + 1);
+    return () => { cancelled = true; };
+  }, [key, hi, naturalW]);
+
+  const src = chain[hi];
+  const credit = hi > 0 && im && im.fi ? { t: im.ft, i: im.fi } : { t: im && im.t, i: im && im.i };
+  const plate = im && (im.u || im.f);
   return (
-    <div ref={box} className="absolute inset-0 overflow-hidden fin touch-none select-none" style={{ cursor: drag ? "grabbing" : "grab", direction: "ltr" }}
+    <div ref={box} className={"surface-root absolute inset-0 overflow-hidden fin touch-none select-none" + (fm ? " surface-focused" : "")} style={{ cursor: drag ? "grabbing" : "grab", direction: "ltr" }}
       onPointerDown={(e) => { moved.current = false; setDrag({ x: e.clientX, p: pan }); }}
       onPointerMove={(e) => { if (!drag) return; const dx = e.clientX - drag.x; if (Math.abs(dx) > 5) moved.current = true; setPan(clamp(drag.p - dx / (box.current.clientWidth * 1.5))); }}
       onPointerUp={() => setDrag(null)} onPointerLeave={() => setDrag(null)}>
@@ -423,39 +465,79 @@ function Surface({ B, name, list, nm, tg, en, onOpen, play, imgs, onUpload, onTe
         </div>
       </div>
 
-      {fm && bgSrc && (
-        <div key={fm.id} className="absolute inset-0 z-[5] overflow-hidden bg-[#05070d] fin">
-          <img key={bgSrc} src={bgSrc} alt={cap.t || nm(fm)} referrerPolicy="no-referrer" onError={() => setBad((b) => b + 1)} className="absolute inset-0 w-full h-full object-cover" style={{ animation: "kb 30s ease-in-out infinite alternate" }} />
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(5,7,13,.7) 0%, rgba(5,7,13,.05) 28%, rgba(5,7,13,.1) 45%, rgba(5,7,13,.93) 100%)" }} />
+      {fm && (
+        <div className="craft-stage fin">
+          <div className="craft-media">
+            {plate && <div className="craft-plate" style={{ backgroundImage: `url("${plate}")` }} />}
+            <div className="craft-halo" style={{ background: `radial-gradient(closest-side, ${B.c}44, rgba(255,196,132,.16) 52%, transparent 78%)` }} />
+            {src && !gone && (<div className="craft-frame">
+              <img key={src} src={src} alt={credit.t || nm(fm)} referrerPolicy="no-referrer" decoding="async"
+                className={"craft-hero" + (loaded ? " on" : "")}
+                onLoad={(e) => { setLoaded(true); setNaturalW(e.currentTarget.naturalWidth || 0); }}
+                onError={() => { if (hi + 1 < chain.length) setHi(hi + 1); else setGone(true); }} /></div>)}
+            <div className="craft-mask" />
+            {gone && <p className="craft-empty">{en ? "No photograph for this craft yet." : "لا توجد صورة لهذه المركبة بعد."}</p>}
+          </div>
+
+          <aside className="craft-hud" dir={en ? "ltr" : "rtl"} onPointerDown={(e) => e.stopPropagation()} aria-label={nm(fm)}>
+            <div className="craft-hud__head">
+              <div className="flex-1 min-w-0">
+                <p className="craft-eyebrow">{en ? "Selected craft" : "المركبة المختارة"} · {name}</p>
+                <h2 className="craft-title">{nm(fm)}</h2>
+                <p className="craft-alt" dir={en ? "rtl" : "ltr"}>{en ? fm.n : EN[fm.id][0]}</p>
+                <p className="craft-tag"><span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: B.c, boxShadow: `0 0 10px ${B.c}` }} />{tg(fm)} · {fm.y}{fm.end !== fm.y ? `–${fm.end >= 2026 ? "…" : fm.end}` : ""}</p>
+              </div>
+              <button onClick={() => { play("click"); setFocus(null); }} aria-label={en ? "Close" : "إغلاق"} className="glass rounded-full w-8 h-8 grid place-items-center shrink-0"><X size={16} /></button>
+            </div>
+
+            <div className="craft-hud__body">
+              <dl className="craft-grid">
+                {SL[en ? "en" : "ar"].map((label, i) => (
+                  <div key={label} className={"craft-cell" + (i === 4 ? " craft-cell--wide" : "")}>
+                    <dt>{label}</dt>
+                    <dd dir="rtl">{fm.s[i]}</dd>
+                  </div>))}
+              </dl>
+
+              <div className="craft-diary">
+                <p className="craft-eyebrow">{en ? "Diary" : "المذكرات"}</p>
+                <p className="craft-quote" dir="rtl">«{fm.diary}»</p>
+              </div>
+
+              <div className="craft-actions" style={{ gridTemplateColumns: `repeat(${SOLAR.includes(fm.id) ? 3 : 2},1fr)` }}>
+                <button className="craft-act" onClick={() => onOpen(fm.id, "blue")}><Settings size={17} className="acc" />{en ? "Blueprint" : "التفكيك"}</button>
+                {SOLAR.includes(fm.id) && <button className="craft-act" onClick={() => onOpen(fm.id, "sim")}><Wind size={17} className="acc" />{en ? "Simulator" : "المحاكي"}</button>}
+                <button className="craft-act" onClick={() => onOpen(fm.id, "lesson")}><Rocket size={17} className="acc" />{en ? "Next frontier" : "الحدود التالية"}</button>
+              </div>
+
+              <div className={"craft-voice" + (live ? " on" : "")}>
+                <button className="craft-voice__btn" onClick={() => { play("click"); onToggle(fm); }} aria-label={live ? (en ? "Pause narration" : "إيقاف السرد") : (en ? "Listen to story" : "استمع لقصتها")}>
+                  {live ? <Pause size={18} /> : <Play size={18} />}
+                </button>
+                <div className="craft-voice__mid">
+                  <div className="craft-wave" aria-hidden>{Array.from({ length: 13 }).map((_, i) => <i key={i} style={{ animationDelay: `${i * 82}ms`, height: `${7 + ((i * 5) % 13)}px` }} />)}</div>
+                  <div className="min-w-0">
+                    <p className="craft-voice__label">{live ? (en ? "Playing narration" : "يُشغّل السرد") : (en ? "Listen to story" : "استمع لقصتها")}</p>
+                    <p className="craft-voice__hint">{en ? "Narration" : "سرد صوتي"} · {fm.id.toUpperCase()}</p>
+                  </div>
+                </div>
+                <button className="craft-voice__re" onClick={() => { play("click"); onReplay(fm); }} aria-label={en ? "Replay" : "إعادة"}><Replay size={15} /></button>
+              </div>
+
+              {notice && <p className="text-xs text-amber-300">{notice}</p>}
+
+              <div className="craft-meta" dir="ltr">
+                {credit.i ? <a href={`https://images.nasa.gov/details/${credit.i}`} target="_blank" rel="noreferrer" className="underline truncate">NASA · {credit.t}</a> : <span>NASA / JPL</span>}
+                <label className="cursor-pointer glass rounded-full px-3 py-1 text-[10px] font-bold shrink-0 hover:bg-white/15"><input type="file" accept="image/*" hidden onChange={(e) => { onUpload(fm.id, e.target.files[0]); e.target.value = ""; }} />{src ? (en ? "Change photo" : "غيّر الصورة") : (en ? "Add photo" : "أضف صورة")}</label>
+              </div>
+            </div>
+          </aside>
         </div>)}
 
-      <div className="absolute top-16 start-3 z-10 glass rounded-2xl px-4 py-2" style={{ direction: en ? "ltr" : "rtl" }}><b className="acc text-lg">{name}</b>{!en && <p className="text-xs text-slate-300 max-w-[240px] leading-relaxed">{B.fact}</p>}</div>
+      {!fm && <div className="absolute top-16 start-3 z-10 glass rounded-2xl px-4 py-2" style={{ direction: en ? "ltr" : "rtl" }}><b className="acc text-lg">{name}</b>{!en && <p className="text-xs text-slate-300 max-w-[240px] leading-relaxed">{B.fact}</p>}</div>}
       {!focus && <p className="absolute top-1/3 inset-x-0 text-center text-slate-200 pointer-events-none px-4" style={{ direction: en ? "ltr" : "rtl" }}>{en ? "Drag to roam the surface, then tap a craft" : "اسحب لتتجول على السطح، ثم اضغط على المركبة"}</p>}
 
-      {fm && (
-        <div className="absolute inset-x-0 bottom-[76px] z-10 flex justify-center px-3 pointer-events-none" style={{ direction: en ? "ltr" : "rtl" }}>
-          <div className="pointer-events-auto w-[min(94vw,760px)] max-h-[46vh] overflow-y-auto rounded-2xl p-4 bg-[#05070d]/75 backdrop-blur-md border border-white/15 fin" onPointerDown={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 shrink-0 rounded-full grid place-items-center border-2 accbd" style={{ boxShadow: `0 0 14px ${B.c}` }}>{live ? <Eq /> : <Volume2 size={18} className="acc" />}</div>
-              <div className="flex-1 min-w-0"><p className="font-extrabold text-lg leading-tight">{nm(fm)}</p><p className="text-xs acc font-bold">{tg(fm)} · {fm.y}</p></div>
-              <button onClick={() => onToggle(fm)} className="glass rounded-full px-4 py-2 text-sm font-bold flex items-center gap-2 shrink-0">{speaking ? <Square size={16} /> : <Volume2 size={16} />} {speaking ? (en ? "Stop" : "إيقاف") : (en ? "Hear its story" : "اسمع قصتها")}</button>
-            </div>
-            <p className="mt-3 text-base sm:text-lg leading-loose text-slate-100" dir="rtl">«{fm.diary}»</p>
-            {chip !== null && <p className="mt-2 leading-loose" dir="rtl"><b className="acc">{SL[en ? "en" : "ar"][chip]}: </b>{fm.s[chip]}</p>}
-            {notice && <p className="mt-2 text-sm text-amber-300">{notice}</p>}
-            <div className="mt-3 flex gap-2 flex-wrap items-center">
-              <span className="text-xs text-slate-400">{en ? "Ask me:" : "اسألني:"}</span>
-              {chips.map(([Ic, idx]) => <button key={idx} onClick={() => { play("click"); setChip(chip === idx ? null : idx); }} className={`rounded-full px-3 py-1.5 text-sm font-bold flex items-center gap-1.5 ${chip === idx ? "accbg" : "glass"}`}><Ic size={14} /> {SL[en ? "en" : "ar"][idx]}</button>)}
-              <button onClick={() => onOpen(fm.id)} className="accbg rounded-full px-4 py-1.5 text-sm font-bold flex items-center gap-1.5 ms-auto"><Rocket size={14} /> {en ? "Open full file" : "افتح الملف الكامل"}</button>
-            </div>
-            <div className="mt-3 flex items-center justify-between gap-2 text-[11px] text-slate-400" dir="ltr">
-              {bgSrc && cap.i ? <a href={`https://images.nasa.gov/details/${cap.i}`} target="_blank" rel="noreferrer" className="underline truncate">NASA · {cap.t}</a> : bgSrc ? <span>NASA / JPL</span> : <a href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent("NASA " + IMGQ[fm.id])}`} target="_blank" rel="noreferrer" className="underline">{en ? "No photo yet — search for one" : "لا توجد صورة بعد — ابحث عن صورتها"}</a>}
-              <label className="cursor-pointer glass rounded-full px-3 py-1 text-xs font-bold shrink-0 hover:bg-white/15"><input type="file" accept="image/*" hidden onChange={(e) => { onUpload(fm.id, e.target.files[0]); e.target.value = ""; }} />{bgSrc ? (en ? "Change photo" : "غيّر الصورة") : (en ? "Add photo" : "أضف صورة")}</label>
-            </div>
-          </div>
-        </div>)}
-
-      <div className="absolute bottom-3 inset-x-0 px-3 flex items-center gap-2 z-10" onPointerDown={(e) => e.stopPropagation()} style={{ direction: en ? "ltr" : "rtl" }}>
+      <div className="surface-dock" onPointerDown={(e) => e.stopPropagation()} style={{ direction: en ? "ltr" : "rtl" }}>
         {fm && <button className="glass rounded-full w-10 h-10 grid place-items-center shrink-0" onClick={() => step(-1)} aria-label="prev"><ArrowRight size={18} /></button>}
         <div className="flex gap-2 overflow-x-auto flex-1 py-1">{list.map((m) => (
           <button key={m.id} onClick={() => go(m)} className={`shrink-0 rounded-xl px-3 py-2 text-start ${focus === m.id ? "accbg" : "glass"}`}><b className="block text-sm">{nm(m)}</b><span className="text-xs opacity-80">{m.y}</span></button>))}</div>
@@ -474,7 +556,7 @@ function ForgottenExplorers() {
   const audioUnlockedRef = useRef(false), startedRef = useRef(false);
   startedRef.current = started;
   const [sel, setSel] = useState(null), [tab, setTab] = useState("diary"), [part, setPart] = useState(null), [dust, setDust] = useState(0);
-  const [speaking, setSpeaking] = useState(false), [notice, setNotice] = useState("");
+  const [speaking, setSpeaking] = useState(false), [voiceId, setVoiceId] = useState(null), [notice, setNotice] = useState("");
   const [warp, setWarp] = useState(false), [modal, setModal] = useState(null), [year, setYear] = useState(2026), [lm, setLm] = useState(-1);
   const [qi, setQi] = useState(0), [score, setScore] = useState(0), [pick, setPick] = useState(null), [done, setDone] = useState(false), [name, setName] = useState("");
   const [muted, setMuted] = useState(false), [realIcons, setRealIcons] = useState(false), audioRef = useRef(null);
@@ -511,7 +593,7 @@ function ForgottenExplorers() {
     if (!mutedRef.current) tone(440 - lm * 70, 1, "sine", 0, 0.1, 200 - lm * 20);
     const id = setTimeout(() => setLm(lm + 1), 1800); return () => clearTimeout(id);
   }, [lm]);
-  const stop = () => { const a = audioRef.current; audioRef.current = null; if (a) a.pause(); setSpeaking(false); };
+  const stop = () => { const a = audioRef.current; audioRef.current = null; if (a) a.pause(); setSpeaking(false); setVoiceId(null); };
 
   // Resume inside user gestures, never from autoplay/onEnded alone.
   const unlockAudio = () => {
@@ -551,17 +633,25 @@ function ForgottenExplorers() {
     else if (startedRef.current && audioUnlockedRef.current) ambient(true);
   };
   const fly = (k) => { unlockAudio(); play("planet"); stop(); setNotice(""); setWarp(true); setTimeout(() => { setView(k); setSel(null); setPart(null); }, 450); setTimeout(() => setWarp(false), 1100); };
-  const openMission = (id) => { play("click"); stop(); setNotice(""); setSel(id); setPart(null); setTab("diary"); setDust(0); };
+  const openMission = (id, to) => { play("click"); stop(); setNotice(""); setSel(id); setPart(null); setTab(to || "diary"); setDust(0); };
   const toggleMute = () => { unlockAudio(); setAppMuted(!mutedRef.current); };
 
+  // Slots come from VOICE_TRACKS, so an .mp3 or .ogg dropped into ./audio is picked up unchanged.
   const playVoice = (m, explicit = false) => {
     stop(); setNotice("");
-    const a = new Audio(`./audio/${m.id}.mp3`); audioRef.current = a;
-    a.onplaying = () => { if (audioRef.current === a) setSpeaking(true); };
-    a.onended = () => { if (audioRef.current === a) { audioRef.current = null; setSpeaking(false); } };
-    a.onerror = () => { if (audioRef.current === a) { audioRef.current = null; setSpeaking(false); if (explicit) setNotice(en ? "No recording has been added for this craft yet." : "لم يُضف تسجيل صوتي لهذه المركبة بعد."); } };
-    a.play().catch(() => {});
+    const list = VOICE_TRACKS[m.id] || [`./audio/${m.id}.mp3`];
+    const a = new Audio(); a.preload = "auto"; audioRef.current = a; let i = 0;
+    const next = () => {
+      if (audioRef.current !== a) return;
+      if (++i >= list.length) { audioRef.current = null; setSpeaking(false); setVoiceId(null); if (explicit) setNotice(en ? "No recording has been added for this craft yet." : "لم يُضف تسجيل صوتي لهذه المركبة بعد."); return; }
+      a.src = list[i]; a.play().catch(() => {});
+    };
+    a.onplaying = () => { if (audioRef.current === a) { setSpeaking(true); setVoiceId(m.id); } };
+    a.onended = () => { if (audioRef.current === a) { audioRef.current = null; setSpeaking(false); setVoiceId(null); } };
+    a.onerror = next;
+    a.src = list[0]; a.play().catch(() => {});
   };
+  const replayVoice = (m) => { stop(); playVoice(m, true); };
   const speak = () => (speaking ? stop() : playVoice(mission, true));
   const tellMission = (m) => { if (mutedRef.current) stop(); else playVoice(m); };
   const toggleVoice = (m) => (speaking ? stop() : playVoice(m, true));
@@ -587,6 +677,54 @@ function ForgottenExplorers() {
         @keyframes spin{to{transform:rotate(360deg)}} @keyframes glow{0%,100%{text-shadow:0 0 20px #7c5cff}50%{text-shadow:0 0 44px #38bdf8}}
         @keyframes fin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
         @keyframes kb{from{transform:scale(1.04) translate(0,0)}to{transform:scale(1.14) translate(-1.5%,-1%)}} @keyframes eq{0%,100%{transform:scaleY(.25)}50%{transform:scaleY(1)}}
+                /* ---- selected craft: cinematic stage ---- */
+        .surface-root{--panel:0px;--sheet:0px}
+        @media(min-width:1024px){.surface-root{--panel:clamp(336px,31vw,430px)}}
+        @media(max-width:1023px){.surface-root{--sheet:min(52vh,468px)}}
+        .craft-stage{position:absolute;inset:0;z-index:6;overflow:hidden;background:#05070d}
+        .craft-media{position:absolute;inset:0 var(--panel) var(--sheet) 0;overflow:hidden}
+        .craft-plate{position:absolute;inset:-9%;background-size:cover;background-position:center;filter:blur(40px) saturate(1.3) brightness(.42);transform:scale(1.14)}
+        .craft-halo{position:absolute;left:50%;top:46%;width:min(86%,940px);aspect-ratio:1/1;transform:translate(-50%,-50%);background:radial-gradient(closest-side,rgba(255,198,132,.26),rgba(124,180,255,.13) 56%,transparent 78%);filter:blur(42px);pointer-events:none}
+        .craft-frame{position:absolute;inset:clamp(84px,13vh,112px) 6% clamp(30px,12vh,108px) 6%;border-radius:22px;overflow:hidden;box-shadow:0 46px 110px rgba(0,0,0,.62),0 0 0 1px rgba(255,255,255,.09),0 0 70px rgba(120,180,255,.12)}
+        .craft-hero{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:50% 47%;opacity:0;transition:opacity .85s ease;filter:drop-shadow(0 26px 54px rgba(0,0,0,.62)) saturate(1.05) contrast(1.06) brightness(.93);animation:drift 54s ease-in-out infinite alternate}
+        .craft-hero.on{opacity:1}
+        @keyframes drift{from{transform:scale(1.015) translate3d(-.7%,-.4%,0)}to{transform:scale(1.055) translate3d(.7%,.5%,0)}}
+        .craft-mask{position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top,#05070d 0%,rgba(5,7,13,.94) 11%,rgba(5,7,13,.5) 32%,rgba(5,7,13,.12) 56%,rgba(5,7,13,.2) 100%),linear-gradient(to left,rgba(5,7,13,.98) 0%,rgba(5,7,13,.7) 14%,rgba(5,7,13,.16) 36%,rgba(5,7,13,0) 52%),radial-gradient(120% 100% at 38% 42%,rgba(5,7,13,0) 34%,rgba(5,7,13,.46) 74%,rgba(5,7,13,.8) 100%)}
+        @media(max-width:1023px){.craft-mask{background:linear-gradient(to top,#05070d 0%,rgba(5,7,13,.93) 24%,rgba(5,7,13,.36) 50%,rgba(5,7,13,0) 72%),radial-gradient(120% 88% at 50% 40%,rgba(5,7,13,0) 38%,rgba(5,7,13,.6) 88%)}}
+        .craft-empty{position:absolute;inset:auto 0 28% 0;text-align:center;font-size:13px;color:rgba(226,238,255,.8);padding:0 22px}
+        .craft-hud{position:absolute;z-index:2;display:flex;flex-direction:column;min-height:0;flex:0 0 auto;color:#eef6ff;background:linear-gradient(168deg,rgba(15,23,42,.9),rgba(5,8,16,.95));backdrop-filter:blur(26px) saturate(1.28);-webkit-backdrop-filter:blur(26px) saturate(1.28);border:1px solid rgba(255,255,255,.12);box-shadow:0 40px 120px rgba(0,0,0,.62),inset 0 1px 0 rgba(255,255,255,.1)}
+        @media(min-width:1024px){.craft-hud{top:62px;right:0;bottom:0;width:var(--panel);border-right:0;border-top-left-radius:26px;border-bottom-left-radius:26px}}
+        @media(max-width:1023px){.craft-hud{left:8px;right:8px;bottom:72px;height:var(--sheet);max-height:var(--sheet);border-radius:22px}.craft-frame{inset:96px 4% 8px 4%}}
+        .craft-hud__head{flex:0 0 auto;padding:15px 16px 12px;display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid rgba(255,255,255,.08);background:linear-gradient(120deg,rgba(255,255,255,.07),transparent 70%)}
+        .craft-eyebrow{font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;font-weight:800;color:rgba(178,208,238,.66)}
+        .craft-title{font-size:clamp(21px,2.1vw,29px);font-weight:800;line-height:1.12;letter-spacing:-.01em;margin-top:3px}
+        .craft-alt{font-size:11.5px;font-weight:700;color:rgba(198,222,248,.62);margin-top:2px;letter-spacing:.02em}
+        .craft-tag{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:3px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);font-size:11px;font-weight:800;color:#e9f4ff}
+        .craft-hud__body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:14px 16px 18px;display:flex;flex-direction:column;gap:12px}
+        .craft-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+        .craft-cell{min-width:0;padding:8px 10px;border-radius:13px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08)}
+        .craft-cell--wide{grid-column:1/-1}
+        .craft-cell dt{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(168,198,232,.75)}
+        .craft-cell dd{margin-top:3px;font-size:13px;font-weight:700;line-height:1.5;color:#f3f9ff;word-break:break-word}
+        .craft-diary{padding:11px 13px;border-radius:15px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.07)}
+        .craft-quote{margin-top:6px;font-size:14px;line-height:2;color:#e8f0fe}
+        .craft-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+        .craft-act{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:9px 4px;border-radius:13px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);font-size:10.5px;font-weight:800;color:#e9f3ff;transition:transform .2s,background .2s,border-color .2s}
+        .craft-act:hover{background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.28);transform:translateY(-1px)}
+        .craft-voice{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:15px;background:linear-gradient(120deg,rgba(255,255,255,.1),rgba(255,255,255,.035));border:1px solid rgba(255,255,255,.13)}
+        .craft-voice__btn{flex:0 0 40px;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--c);color:#05070d;box-shadow:0 8px 22px rgba(0,0,0,.4)}
+        .craft-voice__mid{flex:1;min-width:0;display:flex;align-items:center;gap:9px}
+        .craft-wave{display:flex;align-items:flex-end;gap:3px;height:19px;flex:0 0 auto}
+        .craft-wave i{display:block;width:3px;height:100%;border-radius:2px;background:var(--c);opacity:.55;transform:scaleY(.26);transform-origin:bottom;transition:transform .35s}
+        .craft-voice.on .craft-wave i{opacity:1;animation:eq 1.15s ease-in-out infinite}
+        .craft-voice__label{font-size:12.5px;font-weight:800;line-height:1.25}
+        .craft-voice__hint{font-size:10px;color:rgba(175,200,232,.72);margin-top:1px}
+        .craft-voice__re{flex:0 0 32px;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15)}
+        .craft-voice__re:hover{background:rgba(255,255,255,.16)}
+        .craft-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10.5px;color:rgba(176,200,230,.75)}
+        .surface-dock{position:absolute;left:0;right:0;bottom:12px;z-index:10;padding-inline:12px;display:flex;align-items:center;gap:8px;transition:right .5s cubic-bezier(.2,.8,.2,1)}
+        @media(min-width:1024px){.surface-focused .surface-dock{right:var(--panel)}}
+        @media(prefers-reduced-motion:reduce){.craft-hero{animation:none}.craft-voice.on .craft-wave i{animation:none;transform:scaleY(.8)}}
         .fin{animation:fin 1s both} @media (prefers-reduced-motion:reduce){*{animation:none!important}}`}</style>
 
       <div inert={introVisible && !introHandoff ? "" : undefined} aria-hidden={introVisible && !introHandoff ? true : undefined}>
@@ -613,11 +751,11 @@ function ForgottenExplorers() {
         </div>
       )}
 
-      {view !== "solar" && <Surface key={view} imgs={imgs} onUpload={upload} B={B} name={bn(view)} list={list} nm={nm} tg={tg} en={en} onOpen={openMission} play={play} onTell={tellMission} onToggle={toggleVoice} speaking={speaking} notice={notice} real={realIcons} />}
+      {view !== "solar" && <Surface key={view} imgs={imgs} onUpload={upload} B={B} name={bn(view)} list={list} nm={nm} tg={tg} en={en} onOpen={openMission} play={play} onTell={tellMission} onToggle={toggleVoice} speaking={speaking} voiceId={voiceId} onReplay={replayVoice} notice={notice} real={realIcons} />}
 
       {/* MISSION CONSOLE */}
       {mission && view !== "solar" && (
-        <aside className="fixed z-30 inset-x-2 top-14 bottom-2 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[min(900px,94vw)] glass rounded-2xl overflow-hidden flex flex-col fin" style={{ boxShadow: `0 0 60px ${B.c}44` }}>
+        <aside className="fixed z-30 inset-x-2 top-14 bottom-2 sm:inset-x-0 sm:mx-auto sm:w-[min(900px,94vw)] glass rounded-2xl overflow-hidden flex flex-col fin" style={{ boxShadow: `0 0 60px ${B.c}44` }}>
           <div className="p-4 flex items-start justify-between gap-3" style={{ background: `linear-gradient(120deg, ${B.c}33, transparent)` }}>
             <div><h2 className="text-2xl sm:text-3xl font-extrabold">{nm(mission)}</h2><p className="acc font-bold">{tg(mission)} · {mission.y}{mission.end !== mission.y ? `–${mission.end >= 2026 ? "…" : mission.end}` : ""}</p></div>
             <button onClick={() => { stop(); setSel(null); }} aria-label="close"><X size={22} /></button>
@@ -703,6 +841,7 @@ function ForgottenExplorers() {
           onBeginTransition={beginIntroTransition}
           onComplete={() => setIntroVisible(false)}
           onLanguageToggle={() => setLang(en ? "ar" : "en")}
+          voiceSource={INTRO_VOICE}
         />
       )}
     </div>

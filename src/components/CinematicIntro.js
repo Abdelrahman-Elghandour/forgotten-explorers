@@ -36,6 +36,9 @@
     var location = global.location || {};
     var isLocalHost = location.protocol === "file:" || location.hostname === "localhost" || location.hostname === "127.0.0.1";
     var sources = isLocalHost ? [localSource, hostedSource] : [hostedSource, localSource];
+    // Dedicated slot for a recorded narration of the opening film; when the file is
+    // absent the film keeps its own soundtrack and nothing about the scene changes.
+    var voiceSource = typeof props.voiceSource === "string" ? props.voiceSource : "";
 
     var sourceState = React.useState(0);
     var sourceIndex = sourceState[0];
@@ -67,6 +70,7 @@
     var playEpochRef = React.useRef(0);
     var completionTimerRef = React.useRef(null);
     var volumeRampRef = React.useRef(null);
+    var narrationRef = React.useRef(null);
     var sourceErrorRef = React.useRef(-1);
     var fallbackUsedRef = React.useRef(false);
     var removeInteractionListenersRef = React.useRef(function () {});
@@ -77,6 +81,59 @@
     var completeRef = React.useRef(props.onComplete);
     var languageToggleRef = React.useRef(props.onLanguageToggle);
     var source = sources[sourceIndex] || sources[0];
+
+    React.useEffect(function () {
+      if (!voiceSource) return undefined;
+      var track = null;
+      try {
+        track = new global.Audio(voiceSource);
+      } catch (error) {
+        return undefined;
+      }
+      if (!track) return undefined;
+      track.preload = "auto";
+      track.loop = false;
+      narrationRef.current = track;
+      var available = function () {
+        if (narrationRef.current !== track) return;
+        var video = videoRef.current;
+        // A narration replaces the score so the two voices never overlap.
+        if (video && !mutedRef.current) {
+          try { video.muted = true; } catch (error) { /* detached */ }
+        }
+        if (!mutedRef.current && video && !video.paused && !video.ended) {
+          var play = track.play();
+          if (play && play.catch) play.catch(function () {});
+        }
+      };
+      var missing = function () {
+        if (narrationRef.current === track) narrationRef.current = null;
+      };
+      track.addEventListener("canplaythrough", available);
+      track.addEventListener("error", missing);
+      try { track.load(); } catch (error) { missing(); }
+      return function () {
+        track.removeEventListener("canplaythrough", available);
+        track.removeEventListener("error", missing);
+        try { track.pause(); } catch (error) { /* detached */ }
+        if (narrationRef.current === track) narrationRef.current = null;
+      };
+    }, [voiceSource]);
+
+    React.useEffect(function () {
+      var track = narrationRef.current;
+      if (!track) return;
+      if (isMuted || fading || needsTap) {
+        try { track.pause(); } catch (error) { /* detached */ }
+        return;
+      }
+      var video = videoRef.current;
+      if (video && !Number.isNaN(video.currentTime) && Math.abs(track.currentTime - video.currentTime) > 2) {
+        try { track.currentTime = Math.max(0, video.currentTime); } catch (error) { /* detached */ }
+      }
+      var play = track.play();
+      if (play && play.catch) play.catch(function () {});
+    }, [isMuted, fading, needsTap]);
 
     mutedRef.current = Boolean(props.muted);
     firstInteractionRef.current = props.onFirstInteraction;
