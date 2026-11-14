@@ -74,6 +74,18 @@ Both data files are generated from the recordings and the existing cue tables:
 python3 tools/build_companion_data.py
 ```
 
+### Bundled so it always appears
+The stage no longer depends on the network being open. `tools/fetch_craft_gallery.py` downloads
+four real NASA photographs per craft into `images/craft/` and writes `src/data/craft-gallery.js`,
+so the slideshow and filmstrip are present even when `images-api.nasa.gov` is unreachable; live
+results and mission footage are appended when it is. Three.js is vendored at
+`src/vendor/three.module.min.js` instead of being imported from a CDN, so the companion renders on
+networks or embeddings that block third-party hosts. To refresh the bundled set:
+
+```bash
+python3 tools/fetch_craft_gallery.py
+```
+
 ## Files
 
 * `src/components/craft-media.jsx` — NASA photo/video slideshow, filmstrip, credits, autoplay.

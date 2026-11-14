@@ -17,10 +17,11 @@
   <script src="./src/audio/intro-narration.js"></script>
   <script src="./src/components/CinematicIntro.js"></script>
   <script type="module">
-    import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js";
+    import * as THREE from "./src/vendor/three.module.min.js";
     window.__THREE = THREE;
     window.dispatchEvent(new Event("three-ready"));
   </script>
+  <script src="./src/data/craft-gallery.js"></script>
   <script src="./src/data/mission-sentences.js"></script>
   <script src="./src/data/voice-envelopes.js"></script>
   <script type="text/babel" src="./src/components/robot-companion.jsx"></script>

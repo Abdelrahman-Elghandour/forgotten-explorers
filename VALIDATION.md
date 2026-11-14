@@ -50,6 +50,9 @@ to a window resize listener, and a failed scene renders a static placeholder. `C
 `RobotCompanion` each sit inside a `SlotBoundary` whose fallback is the craft's still photograph,
 the globals are checked before use, and the app root has a last-resort recovery card instead of a
 blank page.
+The stage and companion were also checked with every external host blocked
+(`tests/browser_resilience.py`): four bundled photographs, a NASA credit line and a live WebGL
+companion remain, because the photos ship with the project and Three.js is vendored locally.
 `tests/browser_resilience.py` reproduces each case and passes: no `ResizeObserver`, the Three.js
 CDN blocked, the NASA image API offline, and the media component file failing to load — the HUD,
 the facts and a photograph are present every time, with no page errors.

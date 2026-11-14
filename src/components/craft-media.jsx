@@ -108,7 +108,22 @@
       nasaId: (im && im.fi) || null,
     }), [im && im.u, im && im.f, mission.id]);
 
-    const [items, setItems] = useState([seed]);
+    // Bundled photographs guarantee a real slideshow even with no network.
+    const localList = useMemo(() => {
+      const bundled = ((window.CRAFT_GALLERY || {})[id] || []).map((g) => ({
+        kind: "image",
+        thumb: g.src,
+        src: g.src,
+        large: g.src,
+        title: g.title || mission.n,
+        nasaId: g.nasaId,
+      })).filter((g) => g.nasaId !== (seed && seed.nasaId));
+      // The bundled NASA set is sharper and credited, so it leads; the pinned still is the fallback.
+      if (bundled.length) return bundled;
+      return seed && seed.src ? [seed] : [seed];
+    }, [id, seed]);
+
+    const [items, setItems] = useState(localList);
     const [idx, setIdx] = useState(0);
     const [auto, setAuto] = useState(true);
     const [hi, setHi] = useState(0);
@@ -121,10 +136,23 @@
 
     useEffect(() => {
       let dead = false;
-      setItems([seed]); setIdx(0); setAuto(true); setHi(0); setLoaded(false); setGone(false);
-      fetchMedia(query, seed, id).then((more) => { if (!dead) setItems([seed].concat(more)); });
+      setItems(localList); setIdx(0); setAuto(true); setHi(0); setLoaded(false); setGone(false);
+      fetchMedia(query, seed, id).then((more) => {
+        if (dead) return;
+        // Live results extend the bundled set: two mission videos, then extra photographs.
+        const next = localList.slice();
+        const vids = more.filter((m) => m.kind === "video").slice(0, 2);
+        const imgs = more.filter((m) => m.kind === "image");
+        if (vids[0]) next.splice(Math.min(2, next.length), 0, vids[0]);
+        if (vids[1]) next.splice(Math.min(5, next.length), 0, vids[1]);
+        imgs.forEach((im) => {
+          if (next.length >= 8) return;
+          if (!next.some((x) => x.nasaId === im.nasaId)) next.push(im);
+        });
+        setItems(next);
+      });
       return () => { dead = true; };
-    }, [id, query, seed]);
+    }, [id, query, seed, localList]);
 
     const item = items[Math.min(idx, items.length - 1)] || seed;
 
