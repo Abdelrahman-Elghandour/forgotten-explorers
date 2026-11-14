@@ -34,6 +34,8 @@ Each of the three recorded missions has a verbatim Arabic `diary`, an English `e
 
 ## Planet rosters and teasers
 
+The planet surface is no longer a flat gradient with a shared rover glyph. It is four parallax layers — sky, far ridge, mid ridge and near ground — each drawn in square SVG units so slopes stay steep and craters stay round. The near ground carries graded regolith, soft dune shading, lit crater rims, rock scatter, wind ripples, film grain and a dark foreground berm. Opportunity, Spirit, InSight and Lunokhod 1 each have their own illustration (deck angle, wheel count, the buried wheel and its pit, the fan arrays and seismometer, the tub hull and open solar lid), and every craft is placed from the same `sGroundY()` curve that draws the terrain, so wheels meet the surface at any pan position. Hover lifts the name tag with a rim glow and sonar rings, idle motion adds lens glints, beacons, drifting regolith and dust, and `prefers-reduced-motion` stops all of it. Real NASA photos still replace an illustration when available, and the story view opens exactly as before.
+
 Mars lists Opportunity, Spirit and InSight; the Moon lists only Lunokhod 1. InSight remains on the surface as a disabled teaser with a glassmorphic `القصة قريباً / Script coming soon` badge and never opens a story. Venus, Titan & outer moons, and Deep Space stay on the orbital map with muted `· قريباً` labels; clicking one opens a `قريباً / Coming soon` card instead of an unvoiced roster. `vik`, `pat`, `eag` and `sur` were removed from the roster along with their placeholder audio, and the Time Machine now lists only the three active missions.
 
 ## Which supplied application is used

@@ -1,9 +1,22 @@
-# Forgotten Explorers — reliable 2D mission guide
+# Forgotten Explorers — planet surface scene
 
-The current slideshow and English closed captions already work from a served origin and directly from `file://`. Retain that behavior. User asks to retry a companion that explains and talks and authorizes choosing 2D or 3D for a more professional result. Selected approach: a refined illustrated 2D mission guide, with all functional code inside the existing inline app, no WebGL or module/component fetch dependencies.
+## Layered, textured planet surface
+- [x] The surface is built from a sky, far ridge, mid ridge and near ground layer instead of one flat gradient with two blurry wave lines.
+- [x] Each layer is a square-unit SVG (`viewBox 0 0 <layer width> 100`), so ridge slopes stay steep and craters stay round instead of being stretched 2.5x horizontally.
+- [x] The near ground is graded regolith with soft dune shading, lit crater rims with shadowed far walls, rock scatter with contact shadows, wind ripples, a film-grain overlay and a dark foreground berm for depth.
+- [x] Mars keeps its warm rust palette and drifting dust; the Moon uses a cooler, darker regolith with no dust and a faint Earth in the sky.
 
-- [x] Add a professional 2D companion only to the selected spacecraft views for Opportunity, Spirit and Lunokhod 1, with a subtle idle pose, restrained speech animation synchronized to the existing Arabic narration, mission identity and listening/paused/completed status. Bundle the character and provide an inline SVG fallback so failure to load an illustration never removes the companion or crashes the app.
-- [x] Give the guide clear play/pause/resume and replay controls connected to the existing mission playback system, not a second overlapping audio source. Explain the currently selected mission through the provided recorded story and show a concise bilingual mission fact during pauses/idle. Do not generate a new voice or change the recordings, mission datasets, captions or their cue timing.
-- [x] Keep English closed captions as closed captions, independent of the guide, with toggle, cue gaps and pause behavior respected. Do not replace them with a speech bubble or duplicate the story text in the companion.
-- [x] Preserve the working NASA photo/video slideshow, thumbnails, arrows, credits, controls and local photo fallback. Keep intro footage, Solar System view, planetary surface overview/navigation, AR/EN, NASA hook, blueprint, simulator, lessons, Time Machine, quiz and certificate unchanged.
-- [x] Make the guide compact and non-obstructive on desktop/mobile, collapsible with a reopen control, keyboard accessible and compatible with reduced motion. All new code must work with ordinary `file://` loading, no external Babel component requests, no Three.js/ResizeObserver requirement.
+## Distinct craft, planted on the ground
+- [x] Every mission id has its own illustration: Opportunity and Spirit differ in deck angle, wheel count and the buried wheel with its dug pit; InSight shows its two fan-like solar arrays, deck, seismometer and tether; Lunokhod 1 shows the tub hull, open solar lid, cone antenna, eight-wheel bogie and tread marks.
+- [x] Craft are positioned from the same `sGroundY()` curve that draws the terrain, so wheels meet the surface exactly at every pan position; a browser test asserts the ground fill contains the point just below the feet and not a point above them.
+- [x] Real NASA photos still replace the illustration when the API returns an image, and a failed photo falls back to the illustration rather than an empty slot.
+
+## Interaction and motion
+- [x] Hover/focus lifts the name tag, lights a warm rim glow and emits three sonar rings; a selected craft stays lit.
+- [x] Idle motion: lens glints on the rovers, blinking beacons, drifting regolith under the wheels and floating dust motes.
+- [x] Drag-to-pan keeps the original three-speed parallax and the original click-to-open behavior; selecting a craft still opens the cinematic story view unchanged.
+- [x] `prefers-reduced-motion` disables every ambient animation.
+- [x] Mobile keeps three separated, tappable craft at 390 x 844.
+
+## Preserved
+- [x] Intro film, Solar System canvas, craft story view, slideshow, 2D guide, captions, narration audio, transcript data, blueprint, simulator, lessons, Time Machine and certificate are byte-identical or behaviorally unchanged; `tests/preservation.cjs`, `guide_preservation.cjs`, `voice_transcripts.cjs`, `intro_runtime.cjs` and the browser suites still pass.

@@ -83,3 +83,13 @@ The old WebGL companion is superseded by an original illustrated 2D guide in the
 `tests/browser_guide_lifecycle.py` observes real HTMLAudioElement instances rather than mocking playback. An Unmute-and-listen click preserves the already-playing recording; silent measured cue gaps actually hide the subtitle; completion clears it; and replay leaves exactly one active recording. `tests/browser_companion.py` still passes the NASA slideshow, arrows, manual pause, playable video, and advancing/paused English captions.
 
 `tests/guide_preservation.cjs` pins the previous inline slideshow source and current feature helper functions exactly. `tests/preservation.cjs`, intro runtime, intro narration and transcript tests also pass. SHA-256 checks confirm the intro film, all four narration tracks and the Arabic/English transcript and mission cue data are byte-identical to the pre-guide version. Static build and HTTP health checks include the new local illustration and the route manifest.
+
+## Planet surface scene (layered terrain + grounded craft)
+
+The previous surface was one flat gradient plus two blurred wave paths, with every mission sharing a single 280 x 170 rover glyph placed by a `bottom: 58 - (i % 3) * 8` offset — so craft floated above or sank into the terrain and the horizon read as fog.
+
+It is now four parallax layers drawn in square units (`viewBox 0 0 <w> 100`), which is what makes the ridge slopes steep and the craters circular instead of 2.5x stretched. `sGroundY()` is the single source of truth: the terrain path samples it across the full 250-unit near layer, and each craft's `bottom` is derived from the same function, so wheels meet soil at every pan position.
+
+`tests/browser_surface_scene.py` checks this in a real browser: it asserts four layers, a sky, a grain overlay and 30 dust motes on Mars; that all three Mars craft and the lunar rover render their own illustration; that `path.isPointInFill()` contains the point 3 px below each craft's feet and excludes a point 46 px above them; that hover lifts the tag and brings the glow to 0.85 and the sonar to 0.75; that the four layers pan by different amounts without changing the focus scale; that the story view still opens from the new sprite; that the three craft stay at least 40 px apart at 390 x 844; and that reduced motion sets every ambient animation to `none`. It passes with no page errors, as do `preservation.cjs`, `guide_preservation.cjs`, `voice_transcripts.cjs`, `intro_runtime.cjs`, `browser_craft.py`, `browser_2d_guide.py` and `browser_companion.py`.
+
+Screenshots: `tests/captures/surface_final_mars.png`, `surface_final_moon.png`, `surface_scene_mobile.png`, `surface_mars_hover.png`.
