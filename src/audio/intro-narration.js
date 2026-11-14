@@ -23,12 +23,14 @@
       var sources = isLocal ? local.concat(hosted) : hosted.concat(local);
       var audio = new global.Audio();
       audio.preload = "auto";
+      audio.muted = false;
+      audio.defaultMuted = false;
       audio.loop = false;
       audio.dataset && (audio.dataset.narration = "intro");
       var sourceIndex = 0, dead = false, stopped = false, unavailable = false;
       var pending = false, policyBlocked = false, primed = false, primePending = false;
       var epoch = 0, requestId = null, fadeTimer = null;
-      var speaking = false, lastCueTime = -2, duckTarget = 1;
+      var speaking = false, buffering = false, lastCueTime = -2, duckTarget = 1;
       var listeners = [];
 
       function listen(node, type, fn) {
@@ -96,7 +98,7 @@
           lastCueTime = time;
           setElapsed(time >= 0 && time < length ? time : -1);
         }
-        if (time < 0 || time >= length || video.paused || video.ended || video.muted) {
+        if (time < 0 || time >= length || video.paused || video.ended || video.muted || video.seeking || buffering || (typeof video.readyState === "number" && video.readyState < 2)) {
           if (!audio.paused && !primePending) pause();
           else duck(false);
         } else {
@@ -122,7 +124,8 @@
         } else if (time < 0 && !primed && !primePending) {
           // Prime THIS audio element inside the gesture without starting the story early.
           primePending = true;
-          audio.muted = true;
+          audio.muted = false;
+          audio.volume = 0;
           var promise;
           try { promise = audio.play(); } catch (error) { promise = Promise.reject(error); }
           Promise.resolve(promise).then(function () {
@@ -132,8 +135,9 @@
             audio.pause();
             try { audio.currentTime = 0; } catch (error) { /* metadata pending */ }
             audio.muted = false;
+            audio.volume = 1;
             sync(true);
-          }).catch(function () { primePending = false; });
+          }).catch(function () { primePending = false; audio.volume = 1; });
         }
       }
       function stop() {
@@ -162,8 +166,11 @@
       listen(audio, "canplay", function () { sync(false); });
       listen(audio, "ended", function () { duck(false); });
       listen(video, "pause", function () { if (!primePending) pause(); });
-      listen(video, "seeking", function () { pause(); sync(true); });
-      listen(video, "seeked", function () { sync(true); });
+      listen(video, "waiting", function () { buffering = true; if (!primePending) pause(); });
+      listen(video, "playing", function () { buffering = false; sync(true); });
+      listen(video, "canplay", function () { buffering = false; sync(true); });
+      listen(video, "seeking", function () { buffering = true; pause(); sync(true); });
+      listen(video, "seeked", function () { buffering = false; sync(true); });
       listen(video, "ratechange", function () { sync(true); });
       listen(video, "volumechange", function () {
         if (video.muted) pause();

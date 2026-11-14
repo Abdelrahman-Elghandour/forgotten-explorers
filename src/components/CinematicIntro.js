@@ -44,9 +44,6 @@
     var sourceState = React.useState(0);
     var sourceIndex = sourceState[0];
     var setSourceIndex = sourceState[1];
-    var mutedState = React.useState(Boolean(props.muted));
-    var isMuted = mutedState[0];
-    var setIsMuted = mutedState[1];
     var durationState = React.useState(28);
     var duration = durationState[0];
     var setDuration = durationState[1];
@@ -64,8 +61,6 @@
     var setMediaError = errorState[1];
 
     var videoRef = React.useRef(null);
-    var mutedRef = React.useRef(Boolean(props.muted));
-    var explicitMuteRef = React.useRef(false);
     var interactionConsumedRef = React.useRef(false);
     var completedRef = React.useRef(false);
     var musicLeadRef = React.useRef(false);
@@ -77,7 +72,6 @@
     var removeInteractionListenersRef = React.useRef(function () {});
     var startPlaybackRef = React.useRef(function () {});
     var firstInteractionRef = React.useRef(props.onFirstInteraction);
-    var mutedChangeRef = React.useRef(props.onMutedChange);
     var beginTransitionRef = React.useRef(props.onBeginTransition);
     var musicLeadCallbackRef = React.useRef(props.onMusicLeadIn);
     var completeRef = React.useRef(props.onComplete);
@@ -94,38 +88,21 @@
     var introData = global.INTRO_NARRATION || {};
     var currentCue = (global.SpaceNarration && global.SpaceNarration.cueAt(introData.cues, narration.elapsed)) || null;
 
-    mutedRef.current = Boolean(props.muted);
     firstInteractionRef.current = props.onFirstInteraction;
-    mutedChangeRef.current = props.onMutedChange;
     beginTransitionRef.current = props.onBeginTransition;
     musicLeadCallbackRef.current = props.onMusicLeadIn;
     completeRef.current = props.onComplete;
     languageToggleRef.current = props.onLanguageToggle;
 
-    function updateMuted(next, notifyParent) {
-      var value = Boolean(next);
-      mutedRef.current = value;
-      setIsMuted(value);
-      if (notifyParent && typeof mutedChangeRef.current === "function") {
-        mutedChangeRef.current(value);
-      }
-    }
-
-    function startPlayback(allowUnmute) {
+    function startPlayback() {
       var video = videoRef.current;
       if (!video || completedRef.current) return;
 
       var epoch = playEpochRef.current + 1;
       playEpochRef.current = epoch;
-      var shouldMute = Boolean(mutedRef.current);
-      if (allowUnmute && !explicitMuteRef.current) {
-        shouldMute = false;
-      }
-
-      video.muted = shouldMute;
-      updateMuted(shouldMute, true);
+      video.muted = false;
+      video.defaultMuted = false;
       setNeedsTap(false);
-      if (allowUnmute && !shouldMute) narration.unlock();
 
       var playResult;
       try {
@@ -137,44 +114,26 @@
       Promise.resolve(playResult).then(function () {
         if (epoch !== playEpochRef.current || completedRef.current) return;
         setNeedsTap(false);
-        updateMuted(video.muted, false);
+        if (interactionConsumedRef.current && !narration.blocked) removeInteractionListenersRef.current();
       }).catch(function () {
         if (epoch !== playEpochRef.current || completedRef.current) return;
-
-        if (!shouldMute && !explicitMuteRef.current) {
-          var fallbackEpoch = playEpochRef.current + 1;
-          playEpochRef.current = fallbackEpoch;
-          video.muted = true;
-          // Autoplay policy mutes only this video, not the visitor's app-wide preference.
-          updateMuted(true, false);
-          var mutedPlay;
-          try {
-            mutedPlay = video.play();
-          } catch (mutedError) {
-            mutedPlay = Promise.reject(mutedError);
-          }
-          Promise.resolve(mutedPlay).then(function () {
-            if (fallbackEpoch !== playEpochRef.current || completedRef.current) return;
-            setNeedsTap(false);
-          }).catch(function () {
-            if (fallbackEpoch === playEpochRef.current && !completedRef.current) {
-              setNeedsTap(true);
-            }
-          });
-        } else {
-          setNeedsTap(true);
-        }
+        // Keep sound enabled. Browser policy is recovered by the next genuine
+        // click/key, never by secretly starting a muted copy of the film.
+        interactionConsumedRef.current = false;
+        setNeedsTap(true);
       });
     }
 
     startPlaybackRef.current = startPlayback;
 
     function unlockFromControl() {
+      if (completedRef.current || interactionConsumedRef.current) return;
       interactionConsumedRef.current = true;
-      removeInteractionListenersRef.current();
       if (typeof firstInteractionRef.current === "function") {
         firstInteractionRef.current();
       }
+      narration.unlock();
+      startPlaybackRef.current();
     }
 
     function finishIntro() {
@@ -224,22 +183,10 @@
       if (typeof languageToggleRef.current === "function") {
         languageToggleRef.current();
       }
-      startPlayback(!explicitMuteRef.current);
-    }
-
-    function handleMuteToggle() {
-      unlockFromControl();
-      var video = videoRef.current;
-      var next = narration.blocked ? false : !(video ? video.muted : mutedRef.current);
-      explicitMuteRef.current = next;
-      if (video) video.muted = next;
-      updateMuted(next, true);
-      if (!next) startPlayback(true);
     }
 
     function handleTapToPlay() {
       unlockFromControl();
-      startPlayback(!explicitMuteRef.current);
     }
 
     function handleVideoError() {
@@ -282,23 +229,19 @@
 
     function handleVolumeChange(event) {
       var video = event.currentTarget;
-      setIsMuted(Boolean(video.muted));
-      mutedRef.current = Boolean(video.muted);
+      if (video.muted) video.muted = false;
     }
 
     React.useEffect(function () {
       var video = videoRef.current;
       if (!video) return undefined;
 
-      video.muted = Boolean(props.muted);
+      video.muted = false;
       video.defaultMuted = false;
       try { video.volume = 1; } catch (error) { /* detached */ }
-      mutedRef.current = Boolean(props.muted);
-      setIsMuted(Boolean(props.muted));
       video.load();
-      // Sound is the default: attempt audible playback first. Only a browser policy
-      // refusal falls back to a silent start, and the first interaction then unmutes.
-      startPlayback(true);
+      // Audible autoplay where allowed; otherwise any interaction starts sound.
+      startPlayback();
 
       return function () {
         playEpochRef.current += 1;
@@ -306,38 +249,29 @@
     }, [sourceIndex]);
 
     React.useEffect(function () {
-      var video = videoRef.current;
-      if (!video) return undefined;
-      video.muted = Boolean(props.muted);
-      mutedRef.current = Boolean(props.muted);
-      setIsMuted(Boolean(props.muted));
-      return undefined;
-    }, [props.muted]);
-
-    React.useEffect(function () {
+      if (narration.blocked) interactionConsumedRef.current = false;
       function handleEligibleInteraction(event) {
-        if (interactionConsumedRef.current || completedRef.current) return;
-        if (isIntroControl(event.target)) return;
-
-        interactionConsumedRef.current = true;
-        removeInteractionListenersRef.current();
-        if (typeof firstInteractionRef.current === "function") {
-          firstInteractionRef.current();
-        }
-        startPlaybackRef.current(!explicitMuteRef.current);
+        if (completedRef.current) return;
+        if (event.type === "pointerdown" && event.pointerType && event.pointerType !== "mouse") return;
+        if (event.type === "keydown" && (event.repeat || ["Shift", "Control", "Alt", "Meta"].indexOf(event.key) >= 0)) return;
+        unlockFromControl();
       }
 
       function removeListeners() {
         document.removeEventListener("pointerdown", handleEligibleInteraction, true);
+        document.removeEventListener("pointerup", handleEligibleInteraction, true);
+        document.removeEventListener("click", handleEligibleInteraction, true);
         document.removeEventListener("keydown", handleEligibleInteraction, true);
       }
 
       removeInteractionListenersRef.current = removeListeners;
       document.addEventListener("pointerdown", handleEligibleInteraction, true);
+      document.addEventListener("pointerup", handleEligibleInteraction, true);
+      document.addEventListener("click", handleEligibleInteraction, true);
       document.addEventListener("keydown", handleEligibleInteraction, true);
 
       return removeListeners;
-    }, []);
+    }, [narration.blocked]);
 
     React.useEffect(function () {
       return function () {
@@ -362,9 +296,6 @@
 
     var progress = duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
     var rootClass = "intro-overlay" + (fading ? " intro-overlay--fading" : "");
-    var muteLabel = isMuted || narration.blocked
-      ? "Unmute / تشغيل الصوت"
-      : "Mute / كتم الصوت";
     var languageLabel = isArabic ? "EN" : "عربي";
     var errorLabel = isArabic ? "تعذر تحميل الفيديو. يمكنك التخطي أو المحاولة مرة أخرى." : "The cinematic video could not load. You can skip or try again.";
     var tapLabel = isArabic ? "اضغط للتشغيل" : "Tap to play";
@@ -383,6 +314,7 @@
         className: "intro-video",
         src: source,
         playsInline: true,
+        muted: false,
         preload: "auto",
         "aria-label": isArabic ? "فيديو مقدمة فضائية" : "Space cinematic introduction",
         onError: handleVideoError,
@@ -429,20 +361,6 @@
           "aria-label": "English captions",
           onClick: function () { unlockFromControl(); setCaptionsOn(!captionsOn); }
         }, "CC"),
-          h(
-            "button",
-            {
-              type: "button",
-              className: "intro-audio-control intro-audio-control--corner",
-              "data-intro-control": "true",
-              onClick: handleMuteToggle,
-              "aria-pressed": !(isMuted || narration.blocked),
-              "aria-label": muteLabel,
-              dir: isArabic ? "rtl" : "ltr"
-            },
-            h("span", { className: isMuted || narration.blocked ? "intro-audio-icon intro-audio-icon--muted" : "intro-audio-icon", "aria-hidden": "true" }),
-            h("span", null, muteLabel)
-          ),
         h(
           "button",
           {
@@ -481,10 +399,10 @@
           },
           h("span", { className: "intro-progress__fill", style: { width: String(progress) + "%" } })
         ),
-        (needsTap || mediaError) && h(
+        (needsTap || narration.blocked || mediaError) && h(
           "div",
           { className: "intro-recovery", role: "status", "aria-live": "polite" },
-          h("p", { className: "intro-recovery__message" }, mediaError ? errorLabel : (isArabic ? "اضغط لبدء الفيديو." : "Tap to start the video.")),
+          h("p", { className: "intro-recovery__message" }, mediaError ? errorLabel : (isArabic ? "الصوت يعمل تلقائياً عند أول نقرة أو ضغطة مفتاح." : "Sound starts automatically on your first click or keypress.")),
           h(
             "button",
             {

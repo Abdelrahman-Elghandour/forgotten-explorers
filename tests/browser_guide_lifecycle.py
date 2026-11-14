@@ -34,16 +34,20 @@ async def main():
         await page.wait_for_function("document.querySelector('.mission-guide')?.dataset.mode === 'speaking'", timeout=10000)
         await page.wait_for_timeout(500)
 
-        await page.click('header button[aria-label="mute"]')
-        await page.wait_for_function("document.querySelector('.mission-guide').dataset.mode === 'muted'")
-        await page.evaluate("window.__guideBeforeUnmute = window.__guideAudio.at(-1)")
+        assert await page.locator('header button[aria-label="mute"]').count() == 0
+        await page.evaluate("window.__guideBeforeResume = window.__guideAudio.at(-1)")
+        await page.click(".mission-guide__play")
+        await page.wait_for_function("document.querySelector('.mission-guide').dataset.mode === 'paused'")
+        await page.evaluate("window.dispatchEvent(new Event('focus'))")
+        await page.wait_for_timeout(150)
+        assert await page.evaluate("__guideBeforeResume.paused"), "Auto background recovery must not restart a paused story"
         await page.click(".mission-guide__play")
         await page.wait_for_function("document.querySelector('.mission-guide').dataset.mode === 'speaking'")
         same_audio = await page.evaluate("""() => {
             const a = window.__guideAudio.at(-1);
-            return a === window.__guideBeforeUnmute && !a.muted && !a.paused;
+            return a === window.__guideBeforeResume && !a.muted && !a.paused;
         }""")
-        assert same_audio, "Unmute-and-listen must not restart or pause an already-playing story"
+        assert same_audio, "Resume must preserve the existing recording and its clock"
 
         # Seek inside a measured silent cue gap, allowing the actual playback clock to run.
         await page.evaluate("""() => {
@@ -72,10 +76,10 @@ async def main():
         assert await page.evaluate("document.querySelector('.craft-caption').dataset.present") == "0"
         await page.click(".mission-guide__play")
         await page.wait_for_function("document.querySelector('.mission-guide').dataset.mode === 'speaking'")
-        active = await page.evaluate("window.__guideAudio.filter(a => !a.paused && !a.ended).length")
+        active = await page.evaluate("window.__guideAudio.filter(a => a.dataset.narration === 'mission' && !a.paused && !a.ended).length")
         assert active == 1, f"Only the current recording may play, not duplicate guide audio: {active}"
         await browser.close()
-    print("PASS: real-audio unmute without restart; actual cue gaps hide captions; completion clears captions; guide replay starts one recording.")
+    print("PASS: always-enabled audio and pause/resume without restart; actual cue gaps hide captions; completion clears captions; guide replay starts one recording.")
 
 
 if __name__ == "__main__":

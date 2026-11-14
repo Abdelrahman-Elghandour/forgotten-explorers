@@ -5,19 +5,25 @@ const Babel = require(process.env.BABEL_CHECKER || '/tmp/fe_checks/babel.cjs');
 const root = path.resolve(__dirname, '..');
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const html = read('index.html');
-const baseline = read('tests/fixtures/pre-2d-guide.html');
+const baseline = read('tests/fixtures/pre-always-audio.html');
 const inline = text => text.match(/<script type="text\/babel"(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/)[1];
 const clean = node => JSON.stringify(node, (key, value) => ['loc','start','end','extra','leadingComments','trailingComments','innerComments'].includes(key) ? undefined : value);
 const parse = text => Babel.transform(inline(text), {presets:['react'], ast:true, code:false}).ast.program;
 const functions = text => new Map(parse(text).body.filter(n => n.type === 'FunctionDeclaration').map(n => [n.id.name,clean(n)]));
-const expected = JSON.parse(read('tests/fixtures/guide-stable-functions.json'));
+const expected = Object.fromEntries([...functions(baseline)].filter(([name]) => !['ForgottenExplorers','ambient'].includes(name)));
 const actual = functions(html);
 for (const [name, body] of Object.entries(expected)) assert.equal(actual.get(name), body, 'existing feature function changed: '+name);
 const media = text => text.slice(text.indexOf('/* ============ CRAFT MEDIA STAGE ============ */'),text.indexOf('// Optional layers'));
 // The new guide is inserted after the old media source and before SlotBoundary.
 const marker = '/* ============ INLINE 2D MISSION GUIDE ============ */';
 assert(html.includes(marker), '2D guide must be in the same inline app');
-assert.equal(media(html).split(marker)[0].trim(),media(baseline).trim(), 'NASA slideshow source changed');
+const galleryStable = text => {
+ const source=media(text);const start=source.indexOf('  const CACHE = new Map();');const end=source.indexOf('    const videoSrc =');
+ return source.slice(start,end);
+};
+assert.equal(galleryStable(html),galleryStable(baseline),'NASA data loading, image fallback and carousel state unchanged');
+const imageTail = text => { const source=media(text);return source.slice(source.indexOf(': src && !gone')); };
+assert.equal(imageTail(html),imageTail(baseline),'NASA image rendering, arrows and filmstrip unchanged');
 assert(!/<script[^>]*type="text\/babel"[^>]*\bsrc=/.test(html), 'file:// cannot fetch external Babel components');
 assert(!/WebGLRenderer|THREE\.|ResizeObserver/.test(inline(html)), '2D guide must not depend on WebGL or ResizeObserver');
 const guide = html.slice(html.indexOf(marker),html.indexOf('class SlotBoundary'));

@@ -67,8 +67,8 @@ function mount(play) {
   let calls = 0;
   const policy = mount(() => ++calls === 1 ? Promise.reject(new Error('NotAllowedError')) : Promise.resolve());
   await settle();
-  assert.equal(calls,2,'Audible autoplay retries muted');
-  assert.equal(policy.video.muted,true,'Policy fallback starts silent video');
+  assert.equal(calls,1,'Policy refusal does not secretly retry muted playback');
+  assert.equal(policy.video.muted,false,'Sound remains enabled when autoplay is blocked');
   assert.equal(policy.state.parentMuted,false,'Policy fallback does not mute the whole app');
   assert.equal(policy.state.unlocks,0,'Autoplay never invokes gesture-only Web Audio unlock');
   policy.gesture(); await settle();
@@ -98,12 +98,12 @@ function mount(play) {
   assert(noSkip.intervals.size === 1,'The ending fades the soundtrack instead of cutting it');
   noSkip.finishTimers(); assert.equal(noSkip.state.completes,1); noSkip.unmount();
 
-  const muted = mount(() => Promise.resolve()); await settle();
-  muted.button('intro-audio-control').props.onClick();
-  assert.equal(muted.video.muted,true,'Manual mute takes effect');
-  assert.equal(muted.state.parentMuted,true,'Manual mute updates the app preference');
-  muted.gesture(); assert.equal(muted.video.muted,true,'Later gestures never override explicit mute');
-  muted.ended(); muted.unmount(); assert.equal(muted.timers.size,0,'Unmount clears completion timer');
+  const enabled = mount(() => Promise.resolve()); await settle();
+  assert.equal(enabled.button('intro-audio-control'),null,'No mute/unmute toggle is rendered');
+  enabled.button('intro-transcript-toggle').props.onClick(); await settle();
+  assert.equal(enabled.video.muted,false,'A normal control click automatically retains enabled audio');
+  assert.equal(enabled.state.unlocks,1,'Transcript click unlocks audio without a mute toggle');
+  enabled.ended(); enabled.unmount(); assert.equal(enabled.timers.size,0,'Unmount clears completion timer');
 
   const early = mount(() => Promise.resolve()); await settle();
   early.timeUpdate(21.9); assert.equal(early.state.leads,0,'Homepage music waits until six seconds before the end');
@@ -124,6 +124,6 @@ function mount(play) {
   race.gesture(); raceReject(new Error('late autoplay rejection')); await settle();
   assert.equal(race.video.muted,false,'Late autoplay failure cannot overwrite user-unlocked audio');
   race.unmount();
-  console.log('PASS: Audible-first autoplay, six-second music lead-in, mute, pre-end dissolve, and listener/timer cleanup.');
+  console.log('PASS: Always-unmuted autoplay, automatic gesture recovery, no mute controls, music lead-in, dissolve and cleanup.');
 })().catch(error => { console.error(error); process.exitCode=1; });
 let raceReject;

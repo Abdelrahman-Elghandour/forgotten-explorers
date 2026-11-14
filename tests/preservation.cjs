@@ -84,8 +84,8 @@ assert(updated.includes('onComplete={() => setIntroVisible(false)}'), 'Overlay u
 assert(updated.includes('frozen={introVisible && !introHandoff}'), 'Live canvas renders behind the video and unfreezes at handoff');
 assert(updated.includes('inert={introVisible && !introHandoff ?'), 'Canvas becomes interactive during the dissolve');
 assert(/const fly = \(k\) => \{\s*unlockAudio\(\);/.test(updated) && updated.includes('play("planet")'), 'Planet interaction explicitly unlocks Web Audio');
-assert(updated.includes('window.addEventListener("pointerdown", firstInteraction, true)'), 'Post-intro interaction unlock remains registered');
-assert(updated.includes('window.addEventListener("keydown", firstInteraction, true)'), 'Keyboard unlock supported');
+assert(updated.includes('const inputEvents = ["pointerdown", "pointerup", "click", "keydown"]'), 'Post-intro interaction unlock remains registered');
+assert(updated.includes('window.addEventListener(type, interaction, true)'), 'Keyboard unlock supported');
 
 // ---- selected craft view: every fact on screen, action buttons, voice slots ----
 const surfaceSrc = updated.slice(updated.indexOf('function Surface({'), updated.indexOf('/* ============ APP ============ */'));

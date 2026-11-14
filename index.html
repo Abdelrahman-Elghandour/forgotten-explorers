@@ -28,7 +28,19 @@
       background-color: #05070d;
       overflow: hidden;
     }
-  </style>
+  
+.craft-video-controls{position:absolute;left:14px;right:14px;bottom:14px;z-index:7;display:flex;align-items:center;gap:8px;min-height:38px;padding:6px 8px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(5,7,13,.78);box-shadow:0 10px 24px rgba(0,0,0,.36);backdrop-filter:blur(14px);color:#eaf3ff}
+.craft-video-control{flex:0 0 auto;width:28px;height:28px;display:grid;place-items:center;padding:0;border:1px solid rgba(255,255,255,.22);border-radius:7px;background:rgba(255,255,255,.1);color:#eaf3ff;font:inherit;font-size:12px;line-height:1;cursor:pointer;transition:background .2s,border-color .2s,opacity .2s}
+.craft-video-control:hover:not(:disabled),.craft-video-control:focus-visible{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.5);outline:none}
+.craft-video-control--play{background:var(--c);border-color:transparent;color:#05070d;font-size:10px}
+.craft-video-control--replay{font-size:18px}
+.craft-video-control--fullscreen{font-size:17px}
+.craft-video-control:disabled,.craft-video-control.is-unavailable{opacity:.38;cursor:not-allowed}
+.craft-video-seek{flex:1 1 auto;min-width:48px;height:20px;margin:0;accent-color:var(--c);cursor:pointer}
+.craft-video-timecode{flex:0 0 auto;min-width:76px;color:#dbe7f7;font-size:10px;font-variant-numeric:tabular-nums;text-align:center;white-space:nowrap}
+@media(max-width:520px){.craft-video-controls{left:8px;right:8px;bottom:8px;gap:5px;padding:5px 6px}.craft-video-timecode{min-width:68px;font-size:9px}.craft-video-control{width:26px;height:26px}}
+
+</style>
 </head>
 <body>
   <div id="root"></div>
@@ -227,6 +239,9 @@ function ambient(on, early = false) {
     if (on) {
       const media = ambientTrack ||= new Audio("./background_music.mp4");
       media.loop = false;
+      media.muted = false;
+      media.defaultMuted = false;
+      media.dataset.ambient = "space";
       media.preload = "auto";
       if (!amb) { media.volume = 0; amb = { media, fade: null, wanted: true, early, last: performance.now() }; }
       amb.wanted = true;
@@ -917,6 +932,186 @@ const Eq = () => <span aria-hidden className="flex items-end gap-[3px] h-5">{[0,
   const { useCallback, useEffect, useMemo, useRef, useState } = React;
   const h = React.createElement;
 
+  const formatVideoTime = (seconds) => {
+    const value = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
+    const minutes = Math.floor(value / 60);
+    const secs = String(value % 60).padStart(2, "0");
+    return `${minutes}:${secs}`;
+  };
+
+  function CraftVideoControls({ videoRef, videoSrc, en, title }) {
+    const [playing, setPlaying] = useState(false);
+    const [current, setCurrent] = useState(0);
+    const [duration, setDuration] = useState(0);
+    const [ended, setEnded] = useState(false);
+    const [fullscreenAvailable, setFullscreenAvailable] = useState(false);
+    const [fullscreen, setFullscreen] = useState(false);
+    const controlsRef = useRef(null);
+
+    useEffect(() => {
+      const video = videoRef.current;
+      if (!video) return undefined;
+
+      // Gallery recordings always remain audible; this is intentionally not a user-facing toggle.
+      video.muted = false;
+      video.defaultMuted = false;
+      video.volume = 1;
+
+      const sync = () => {
+        const nextDuration = Number.isFinite(video.duration) ? video.duration : 0;
+        setCurrent(Number.isFinite(video.currentTime) ? video.currentTime : 0);
+        setDuration(nextDuration);
+        setPlaying(!video.paused && !video.ended);
+        setEnded(video.ended);
+      };
+      const syncPlaying = () => {
+        setPlaying(!video.paused && !video.ended);
+        setEnded(video.ended);
+      };
+      const syncFullscreen = () => {
+        setFullscreen(Boolean(
+          document.fullscreenElement === video.parentElement
+          || document.webkitFullscreenElement === video.parentElement
+          || video.webkitDisplayingFullscreen
+        ));
+      };
+
+      setFullscreenAvailable(Boolean(
+        typeof video.parentElement?.requestFullscreen === "function"
+        || typeof video.parentElement?.webkitRequestFullscreen === "function"
+        || typeof video.webkitEnterFullscreen === "function"
+      ));
+      sync();
+      video.addEventListener("loadedmetadata", sync);
+      video.addEventListener("durationchange", sync);
+      video.addEventListener("timeupdate", sync);
+      video.addEventListener("progress", sync);
+      video.addEventListener("play", syncPlaying);
+      video.addEventListener("pause", syncPlaying);
+      video.addEventListener("ended", sync);
+      document.addEventListener("fullscreenchange", syncFullscreen);
+      document.addEventListener("webkitfullscreenchange", syncFullscreen);
+      video.addEventListener("webkitbeginfullscreen", syncFullscreen);
+      video.addEventListener("webkitendfullscreen", syncFullscreen);
+
+      return () => {
+        video.removeEventListener("loadedmetadata", sync);
+        video.removeEventListener("durationchange", sync);
+        video.removeEventListener("timeupdate", sync);
+        video.removeEventListener("progress", sync);
+        video.removeEventListener("play", syncPlaying);
+        video.removeEventListener("pause", syncPlaying);
+        video.removeEventListener("ended", sync);
+        document.removeEventListener("fullscreenchange", syncFullscreen);
+        document.removeEventListener("webkitfullscreenchange", syncFullscreen);
+        video.removeEventListener("webkitbeginfullscreen", syncFullscreen);
+        video.removeEventListener("webkitendfullscreen", syncFullscreen);
+        video.pause();
+      };
+    }, [videoRef, videoSrc]);
+
+    const togglePlay = () => {
+      const video = videoRef.current;
+      if (!video) return;
+      if (video.paused || video.ended) {
+        if (video.ended) video.currentTime = 0;
+        video.muted = false;
+        video.defaultMuted = false;
+        video.volume = 1;
+        const result = video.play();
+        if (result && result.catch) result.catch(() => setPlaying(false));
+      } else {
+        video.pause();
+      }
+    };
+
+    const replay = () => {
+      const video = videoRef.current;
+      if (!video) return;
+      video.currentTime = 0;
+      video.muted = false;
+      video.defaultMuted = false;
+      video.volume = 1;
+      const result = video.play();
+      if (result && result.catch) result.catch(() => setPlaying(false));
+    };
+
+    const seek = (event) => {
+      const video = videoRef.current;
+      if (!video) return;
+      const next = Number(event.currentTarget.value);
+      video.currentTime = Number.isFinite(next) ? next : 0;
+      setCurrent(video.currentTime);
+      setEnded(false);
+    };
+
+    const toggleFullscreen = () => {
+      const video = videoRef.current;
+      if (!video || !fullscreenAvailable) return;
+      if (document.fullscreenElement || document.webkitFullscreenElement || video.webkitDisplayingFullscreen) {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (exit) {
+          const result = exit.call(document);
+          if (result && result.catch) result.catch(() => {});
+        }
+        return;
+      }
+      let result;
+      if (typeof video.parentElement?.requestFullscreen === "function") result = video.parentElement.requestFullscreen();
+      else if (typeof video.parentElement?.webkitRequestFullscreen === "function") result = video.parentElement.webkitRequestFullscreen();
+      else if (typeof video.webkitEnterFullscreen === "function") result = video.webkitEnterFullscreen();
+      if (result && result.catch) result.catch(() => {});
+    };
+
+    const seekMax = duration > 0 ? duration : 0;
+    const seekValue = Math.min(current, seekMax || current || 0);
+    const playLabel = playing
+      ? (en ? "Pause video" : "إيقاف الفيديو")
+      : (ended ? (en ? "Play video again" : "إعادة تشغيل الفيديو") : (en ? "Play video" : "تشغيل الفيديو"));
+
+    return h("div", { className: "craft-video-controls", ref: controlsRef, dir: "ltr", "aria-label": en ? "Video controls" : "أدوات الفيديو" },
+      h("button", {
+        type: "button",
+        className: "craft-video-control craft-video-control--play",
+        onClick: togglePlay,
+        "aria-label": playLabel,
+        title: playLabel,
+      }, playing ? "❚❚" : "▶"),
+      h("button", {
+        type: "button",
+        className: "craft-video-control craft-video-control--replay",
+        onClick: replay,
+        "aria-label": en ? "Replay video" : "إعادة تشغيل الفيديو",
+        title: en ? "Replay" : "إعادة التشغيل",
+      }, "↺"),
+      h("input", {
+        className: "craft-video-seek",
+        type: "range",
+        min: 0,
+        max: seekMax,
+        step: 0.1,
+        value: seekValue,
+        onChange: seek,
+        onInput: seek,
+        "aria-label": en ? "Seek video" : "تقديم أو ترجيع الفيديو",
+      }),
+      h("span", { className: "craft-video-timecode", "aria-live": "off" }, `${formatVideoTime(current)} / ${formatVideoTime(duration)}`),
+      h("button", {
+        type: "button",
+        className: "craft-video-control craft-video-control--fullscreen" + (fullscreenAvailable ? "" : " is-unavailable"),
+        onClick: toggleFullscreen,
+        disabled: !fullscreenAvailable,
+        "aria-disabled": fullscreenAvailable ? undefined : "true",
+        "aria-label": fullscreenAvailable
+          ? (fullscreen ? (en ? "Exit fullscreen" : "الخروج من ملء الشاشة") : (en ? "Enter fullscreen" : "ملء الشاشة"))
+          : (en ? "Fullscreen unavailable" : "ملء الشاشة غير متاح"),
+        title: fullscreenAvailable
+          ? (fullscreen ? "Exit fullscreen" : "Fullscreen")
+          : (en ? "Fullscreen unavailable" : "ملء الشاشة غير متاح"),
+      }, fullscreen ? "⤢" : "⛶")
+    );
+  }
+
   const CACHE = new Map();
   const SEARCH = "https://images-api.nasa.gov/search";
   const SLIDE_MS = 7000;
@@ -1105,6 +1300,14 @@ const Eq = () => <span aria-hidden className="flex items-end gap-[3px] h-5">{[0,
     }, [idx]);
 
     const videoSrc = item.kind === "video" && !vDead ? item.sources[Math.min(vTry, item.sources.length - 1)] : null;
+    useEffect(() => {
+      const video = videoRef.current;
+      if (!video || item.kind !== "video") return undefined;
+      video.muted = false;
+      video.defaultMuted = false;
+      video.volume = 1;
+      return () => video.pause();
+    }, [item.kind, videoSrc]);
     const credit = { t: item.title, i: item.nasaId };
 
     return h("div", { className: "craft-media__inner", onPointerDown: (e) => e.stopPropagation() },
@@ -1117,7 +1320,8 @@ const Eq = () => <span aria-hidden className="flex items-end gap-[3px] h-5">{[0,
                   className: "craft-hero craft-hero--video on",
                   src: videoSrc,
                   poster: item.poster,
-                  controls: true,
+                  controls: false,
+                  muted: false,
                   playsInline: true,
                   preload: "metadata",
                   onPlay: stopAuto,
@@ -1129,7 +1333,8 @@ const Eq = () => <span aria-hidden className="flex items-end gap-[3px] h-5">{[0,
                 })
               : h("div", { className: "craft-video-wait" },
                   h("span", null, "NASA"),
-                  h("small", null, en ? "This recording is not available right now." : "هذا التسجيل غير متاح الآن.")))
+                  h("small", null, en ? "This recording is not available right now." : "هذا التسجيل غير متاح الآن.")),
+            videoSrc ? h(CraftVideoControls, { videoRef, videoSrc, en, title: item.title }) : null)
         : src && !gone
           ? h("div", { className: "craft-frame" },
               h("img", {
@@ -1585,7 +1790,7 @@ function ForgottenExplorers() {
   const [captionsOn, setCaptionsOn] = useState(false);
   const [warp, setWarp] = useState(false), [modal, setModal] = useState(null), [year, setYear] = useState(2026), [lm, setLm] = useState(-1);
   const [qi, setQi] = useState(0), [score, setScore] = useState(0), [pick, setPick] = useState(null), [done, setDone] = useState(false), [name, setName] = useState("");
-  const [muted, setMuted] = useState(false), [realIcons, setRealIcons] = useState(false), audioRef = useRef(null);
+  const [realIcons, setRealIcons] = useState(false), audioRef = useRef(null);
   const [soon, setSoon] = useState(null);
   const apiImgs = useNasaImages(started);
   const [shots, setShots] = useState({});
@@ -1600,8 +1805,7 @@ function ForgottenExplorers() {
     rd.readAsDataURL(file);
   };
   const imgs = { ...apiImgs, ...Object.fromEntries(Object.entries(shots).map(([k, v]) => [k, { u: v }])) };
-  const mutedRef = useRef(false); mutedRef.current = muted;
-  const play = (k) => !mutedRef.current && sfx[k]();
+  const play = (k) => sfx[k]();
   const t = (k) => T[lang][k], en = lang === "en";
   useEffect(() => { setCaptionsOn(en); }, [en]);
   const nm = (m) => (en ? EN[m.id][0] : m.n), tg = (m) => (en ? EN[m.id][1] : m.tag);
@@ -1621,60 +1825,55 @@ function ForgottenExplorers() {
   useEffect(() => { (async () => { try { const r = await window.storage.get("realIcons"); if (r) setRealIcons(r.value === "1"); } catch (e) {} })(); }, []);
   useEffect(() => {
     if (lm < 0 || lm > 4) return;
-    if (!mutedRef.current) tone(440 - lm * 70, 1, "sine", 0, 0.1, 200 - lm * 20);
+    tone(440 - lm * 70, 1, "sine", 0, 0.1, 200 - lm * 20);
     const id = setTimeout(() => setLm(lm + 1), 1800); return () => clearTimeout(id);
   }, [lm]);
   const stop = () => { const a = audioRef.current; audioRef.current = null; if (a) { a.pause(); a.onpause = null; } window.SpaceNarration?.duck("mission", false); setSpeaking(false); setVoiceId(null); setVoiceTime(0); setVoiceDuration(0); };
 
-  // Resume inside user gestures, never from autoplay/onEnded alone.
+  // Sound stays enabled. Browser-gated playback retries automatically on
+  // genuine input and when returning to the tab; paused stories stay paused.
   const unlockAudio = () => {
     try {
       ac();
       audioUnlockedRef.current = true;
-      if ((startedRef.current || introMusicReadyRef.current) && viewRef.current === "solar" && !mutedRef.current) ambient(true, !startedRef.current);
-    } catch (e) { /* Web Audio is optional; playback and exploration still work. */ }
+      if (startedRef.current || introMusicReadyRef.current) ambient(true, !startedRef.current);
+    } catch (e) { /* Exploration still works if Web Audio is unavailable. */ }
   };
   useEffect(() => {
-    const firstInteraction = (e) => {
+    const interaction = (e) => {
       if (e.type === "keydown" && (e.repeat || ["Shift", "Control", "Alt", "Meta"].includes(e.key))) return;
       unlockAudio();
-      if (audioUnlockedRef.current) {
-        window.removeEventListener("pointerdown", firstInteraction, true);
-        window.removeEventListener("keydown", firstInteraction, true);
-      }
     };
-    window.addEventListener("pointerdown", firstInteraction, true);
-    window.addEventListener("keydown", firstInteraction, true);
+    const resumeAllowedAudio = () => {
+      if (document.hidden) return;
+      if (audioUnlockedRef.current) unlockAudio();
+      else if (introMusicReadyRef.current) ambient(true, !startedRef.current);
+    };
+    const inputEvents = ["pointerdown", "pointerup", "click", "keydown"];
+    inputEvents.forEach((type) => window.addEventListener(type, interaction, true));
+    window.addEventListener("focus", resumeAllowedAudio);
+    window.addEventListener("pageshow", resumeAllowedAudio);
+    document.addEventListener("visibilitychange", resumeAllowedAudio);
     return () => {
-      window.removeEventListener("pointerdown", firstInteraction, true);
-      window.removeEventListener("keydown", firstInteraction, true);
+      inputEvents.forEach((type) => window.removeEventListener(type, interaction, true));
+      window.removeEventListener("focus", resumeAllowedAudio);
+      window.removeEventListener("pageshow", resumeAllowedAudio);
+      document.removeEventListener("visibilitychange", resumeAllowedAudio);
     };
   }, []);
   useEffect(() => {
-    if (!started) return;
-    if (view === "solar" && !muted && (audioUnlockedRef.current || introMusicReadyRef.current)) ambient(true);
-    else ambient(false);
-  }, [view, started, muted]);
+    if (started && (audioUnlockedRef.current || introMusicReadyRef.current)) ambient(true);
+  }, [started]);
   const beginMusicLeadIn = () => {
     introMusicReadyRef.current = true;
-    if (!mutedRef.current) ambient(true, true);
+    ambient(true, true);
   };
   const beginIntroTransition = () => {
     setIntroHandoff(true);
     startedRef.current = true;
     setView("solar");
     setStarted(true);
-    if (!mutedRef.current && (audioUnlockedRef.current || introMusicReadyRef.current)) ambient(true);
-  };
-  const setAppMuted = (m) => {
-    mutedRef.current = m;
-    setMuted(m);
-    if (audioRef.current) {
-      audioRef.current.muted = m;
-      window.SpaceNarration?.duck("mission", !m && !audioRef.current.paused && !audioRef.current.ended);
-    }
-    if (m) ambient(false);
-    else if (viewRef.current === "solar" && (audioUnlockedRef.current || introMusicReadyRef.current)) ambient(true, !startedRef.current);
+    if (audioUnlockedRef.current || introMusicReadyRef.current) ambient(true);
   };
   const fly = (k) => {
     unlockAudio();
@@ -1683,13 +1882,13 @@ function ForgottenExplorers() {
   };
   useEffect(() => { if (!soon) return undefined; const id = setTimeout(() => setSoon(null), 6000); return () => clearTimeout(id); }, [soon]);
   const openMission = (id, to) => { play("click"); stop(); setNotice(""); setSel(id); setPart(null); setTab(to || "diary"); setDust(0); };
-  const toggleMute = () => { unlockAudio(); setAppMuted(!mutedRef.current); };
 
   // Slots come from VOICE_TRACKS, so an .mp3 or .ogg dropped into ./audio is picked up unchanged.
   const playVoice = (m, explicit = false) => {
+    unlockAudio();
     stop(); setNotice("");
     const list = VOICE_TRACKS[m.id] || [`./audio/${m.id}.mp3`];
-    const a = new Audio(); a.preload = "auto"; a.muted = mutedRef.current; audioRef.current = a; let i = 0;
+    const a = new Audio(); a.preload = "auto"; a.muted = false; a.defaultMuted = false; a.volume = 1; a.dataset.narration = "mission"; a.dataset.mission = m.id; audioRef.current = a; let i = 0;
     const next = () => {
       if (audioRef.current !== a) return;
       window.SpaceNarration?.duck("mission", false);
@@ -1708,7 +1907,7 @@ function ForgottenExplorers() {
   const resumeVoice = () => { const a = audioRef.current; if (!a) return; unlockAudio(); a.play().catch(() => {}); };
   const replayVoice = (m) => { stop(); playVoice(m, true); };
   const speak = () => (speaking ? pauseVoice() : audioRef.current && voiceId === mission?.id ? resumeVoice() : playVoice(mission, true));
-  const tellMission = (m) => { if (mutedRef.current) stop(); else playVoice(m); };
+  const tellMission = (m) => playVoice(m);
   const toggleVoice = (m) => (speaking ? pauseVoice() : audioRef.current && voiceId === m.id ? resumeVoice() : playVoice(m, true));
   const toggleIcons = () => { const v = !realIcons; setRealIcons(v); try { window.storage.set("realIcons", v ? "1" : "0"); } catch (e) {} };
 
@@ -2321,7 +2520,6 @@ function ForgottenExplorers() {
           <button className={btn} onClick={() => setModal("src")}><Database size={16} /> <span className="hidden sm:inline">{t("src")}</span></button>
           {!introVisible && <button className={btn} onClick={() => { play("click"); setModal("intro"); }} aria-label="Open English intro transcript">Transcript / النص</button>}
           {view !== "solar" && <button className={btn + (realIcons ? " ring-2 ring-white/60" : "")} onClick={toggleIcons} aria-pressed={realIcons} title={en ? "Show real photos instead of icons" : "عرض الصور الحقيقية بدل الأيقونات"}><Camera size={16} /> <span className="hidden sm:inline">{en ? "Real photos" : "الصور الحقيقية"}</span></button>}
-          <button className={btn} onClick={toggleMute} aria-label="mute">{muted ? <VolumeX size={16} /> : <Volume2 size={16} />}</button>
         </div>
       </header>
 
@@ -2332,7 +2530,7 @@ function ForgottenExplorers() {
         </div>
       )}
 
-      {view !== "solar" && <Surface key={view} imgs={imgs} onUpload={upload} B={B} name={bn(view)} list={list} nm={nm} tg={tg} en={en} onOpen={openMission} onLocked={() => setSoon(view)} play={play} onTell={tellMission} onToggle={toggleVoice} speaking={speaking} voiceId={voiceId} onReplay={replayVoice} notice={notice} real={realIcons} captionsOn={captionsOn} onCaptionsToggle={setCaptionsOn} voiceCue={voiceCue} voiceTime={voiceTime} voiceDuration={voiceDuration} muted={muted} onGuideToggle={(m) => { unlockAudio(); const wasMuted = mutedRef.current; if (wasMuted) setAppMuted(false); if (!(wasMuted && speaking && voiceId === m.id)) toggleVoice(m); }} onGuideReplay={(m) => { unlockAudio(); if (mutedRef.current) setAppMuted(false); replayVoice(m); }} />}
+      {view !== "solar" && <Surface key={view} imgs={imgs} onUpload={upload} B={B} name={bn(view)} list={list} nm={nm} tg={tg} en={en} onOpen={openMission} onLocked={() => setSoon(view)} play={play} onTell={tellMission} onToggle={toggleVoice} speaking={speaking} voiceId={voiceId} onReplay={replayVoice} notice={notice} real={realIcons} captionsOn={captionsOn} onCaptionsToggle={setCaptionsOn} voiceCue={voiceCue} voiceTime={voiceTime} voiceDuration={voiceDuration} muted={false} onGuideToggle={(m) => { unlockAudio(); toggleVoice(m); }} onGuideReplay={(m) => { unlockAudio(); replayVoice(m); }} />}
 
       {soon && (
         <div className="fixed inset-0 z-[45] grid place-items-center p-6" role="dialog" aria-modal="true" aria-label={en ? "Coming soon" : "قريباً"} onClick={() => setSoon(null)}>
@@ -2430,8 +2628,6 @@ function ForgottenExplorers() {
       {introVisible && (
         <window.CinematicIntro
           lang={lang}
-          muted={muted}
-          onMutedChange={setAppMuted}
           onFirstInteraction={unlockAudio}
           onMusicLeadIn={beginMusicLeadIn}
           onBeginTransition={beginIntroTransition}

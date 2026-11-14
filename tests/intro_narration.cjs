@@ -39,7 +39,11 @@ function mount() {
   for(let i=0;i<6;i++)m.tick();
   assert.equal(m.audio.seeks.length,seeksBefore,'Small startup drift never retriggers the first words');
   m.video.currentTime=17.2;m.video.emit('seeking');await settle();m.tick();await settle();
+  assert(m.audio.paused,'Narration pauses while the video is seeking');
+  m.video.emit('seeked');await settle();
   assert(Math.abs(m.audio.currentTime-(17.2-11.833333333333334))<.001,'Seeking uses the video-relative offset');
+  m.video.emit('waiting');assert(m.audio.paused,'Narration never runs ahead of a buffering film');
+  m.video.emit('playing');await settle();assert(!m.audio.paused,'Narration automatically resumes with ready video');
   for(let i=0;i<35;i++)m.tick();assert(m.video.volume<.24,'Film score gently ducks');
   m.video.muted=true;m.video.emit('volumechange');assert(m.audio.paused,'Explicit mute pauses Arabic narration');
   for(let i=0;i<35;i++)m.tick();assert(m.video.volume>.98,'Score restores after narrator stops');

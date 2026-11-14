@@ -8,7 +8,7 @@ Open it, watch the 28-second intro settle on our Solar System, then fly to a pla
 
 ## What is inside
 
-**Cinematic opening.** A 28-second Full HD film: the rover on Mars, a telemetry warning, a loss of signal and a silent blackout, then the camera pulls back and decelerates into the exact framing of the live Solar System canvas. The last 1.2 seconds cross-dissolve into the interactive canvas, so the planets appear to become clickable rather than cutting to a new screen. There is no Skip button: the opening plays through, and sound is on from the first frame — if the browser refuses audible autoplay, the film starts silently and the first click anywhere restores the audio.
+**Cinematic opening.** A 28-second Full HD film: the rover on Mars, a telemetry warning, a loss of signal and a silent blackout, then the camera pulls back and decelerates into the exact framing of the live Solar System canvas. The last 1.2 seconds cross-dissolve into the interactive canvas, so the planets appear to become clickable rather than cutting to a new screen. There is no Skip button and no mute toggle. The film remains unmuted and attempts audible autoplay; if the browser blocks playback, any genuine click or keypress automatically starts it with sound, without changing an audio setting.
 
 **Live Solar System.** A canvas of the Sun and five orbits with parallax, hover states and drag-to-pan, drawn in the site's `#05070d` palette with a `#ffb347` Sun.
 
@@ -59,7 +59,8 @@ Windows users can double-click `run_website.bat`.
 
 ## Notes
 
-- The film opens with sound on and full volume. Only when a browser policy blocks audible autoplay does it fall back to a silent start, and the first click or key press anywhere unmutes it and unlocks the Web Audio graph for the narration and ambience.
+- Sound is permanently enabled inside the app. There are no website, intro, or slideshow-video mute/volume toggles. Background music continues across the Solar System, surfaces, spacecraft and dialogs, ducks under narration, and automatically retries after returning to the tab or ordinary input. Story and video play/pause/replay controls remain; intentionally paused stories are not restarted by background recovery.
+- Browser/site/OS sound restrictions still apply. If audible autoplay is refused, the intro stays unmuted and waits for the first genuine click or keypress rather than secretly playing silently. No mute/unmute action is required.
 - `tests/preservation.cjs` pins every original feature and dataset; the browser suites in `tests/` drive the real app.
 - NASA imagery and mission facts come from public NASA sources; the Arabic voice-over is original narration written for this project.
 
