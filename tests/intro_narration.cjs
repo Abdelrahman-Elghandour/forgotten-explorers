@@ -5,7 +5,9 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const settle = async () => { for (let i=0;i<12;i++) await Promise.resolve(); };
 class Media {
-  constructor(src='') { this.src=src; this.dataset={}; this.listeners={}; this.paused=true; this.ended=false; this.muted=false; this.volume=1; this.currentTime=0; this.duration=14.229333; this.playbackRate=1; this.plays=[]; this.pauses=0; }
+  constructor(src='') { this.src=src; this.dataset={}; this.listeners={}; this.paused=true; this.ended=false; this.muted=false; this.volume=1; this._currentTime=0; this.seeks=[]; this.duration=14.229333; this.playbackRate=1; this.plays=[]; this.pauses=0; }
+  get currentTime() { return this._currentTime; }
+  set currentTime(value) { this._currentTime=value; this.seeks.push(value); }
   addEventListener(t,f) { (this.listeners[t] ||= new Set()).add(f); }
   removeEventListener(t,f) { this.listeners[t]?.delete(f); }
   emit(t) { for(const f of [...(this.listeners[t]||[])]) f({currentTarget:this}); }
@@ -32,6 +34,10 @@ function mount() {
   m.video.currentTime=11.82;m.tick();assert.equal(m.audio.plays.length,0);
   m.video.currentTime=11.833333333333334;m.tick();await settle();assert.equal(m.audio.plays.length,1);assert.equal(m.audio.plays[0],0,'Narration starts at audio t=0 on black frame');
   assert(m.ducks.some(x=>x[1]),'Narration engages shared duck');
+  m.audio.currentTime=.16;m.video.currentTime=12.24;
+  const seeksBefore=m.audio.seeks.length;
+  for(let i=0;i<6;i++)m.tick();
+  assert.equal(m.audio.seeks.length,seeksBefore,'Small startup drift never retriggers the first words');
   m.video.currentTime=17.2;m.video.emit('seeking');await settle();m.tick();await settle();
   assert(Math.abs(m.audio.currentTime-(17.2-11.833333333333334))<.001,'Seeking uses the video-relative offset');
   for(let i=0;i<35;i++)m.tick();assert(m.video.volume<.24,'Film score gently ducks');
@@ -45,5 +51,5 @@ function mount() {
   const originalVideoTime=p.video.currentTime;p.audio.deny=false;p.hook.unlock();await settle();
   assert.equal(p.video.currentTime,originalVideoTime,'Unmute never resets video');assert(Math.abs(p.audio.currentTime-(16-11.833333333333334))<.001,'Unmute catches up to the narrator');
   assert.equal(p.states[0],false);p.cleanup();
-  console.log('PASS: precise blackout offset, seeking sync, score/shared ducking, mute, late-unmute recovery, ending and cleanup.');
+  console.log('PASS: smooth first words, seeking sync, score/shared ducking, mute, late-unmute recovery, ending and cleanup.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

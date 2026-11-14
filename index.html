@@ -163,7 +163,7 @@ const QUIZ = [
 ];
 
 /* ============ SOUND (Web Audio) ============ */
-let ctx, amb, narrationBus;
+let ctx, amb, ambientTrack, narrationBus;
 let narrationDuckTarget = 1;
 const ac = () => { ctx ||= new (window.AudioContext || window.webkitAudioContext)(); if (ctx.state !== "running") ctx.resume().catch(() => {}); return ctx; };
 function narrationMaster() {
@@ -184,52 +184,74 @@ function tone(f, d = 0.15, type = "sine", t0 = 0, vol = 0.12, f2) {
     o.connect(g).connect(narrationMaster()); o.start(t); o.stop(t + d);
   } catch (e) {}
 }
+function planetTransitionSound() {
+  try {
+    const a = ac(), start = a.currentTime, bus = narrationMaster();
+    // A rising wash leads into a low cinematic arrival, with no drum or pitched chirp.
+    const length = Math.floor(a.sampleRate * 1.35);
+    const buffer = a.createBuffer(1, length, a.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+    const air = a.createBufferSource(), band = a.createBiquadFilter(), airGain = a.createGain();
+    air.buffer = buffer; band.type = "bandpass"; band.Q.value = 0.6;
+    band.frequency.setValueAtTime(180, start);
+    band.frequency.exponentialRampToValueAtTime(1500, start + 0.38);
+    band.frequency.exponentialRampToValueAtTime(380, start + 1.3);
+    airGain.gain.setValueAtTime(0.0001, start);
+    airGain.gain.linearRampToValueAtTime(0.075, start + 0.32);
+    airGain.gain.exponentialRampToValueAtTime(0.0001, start + 1.35);
+    air.connect(band).connect(airGain).connect(bus);
+    air.start(start); air.stop(start + 1.35);
+
+    [["sine", 72, 44, 0.16], ["triangle", 144, 88, 0.045]].forEach(([type, from, to, level]) => {
+      const oscillator = a.createOscillator(), gain = a.createGain();
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(from, start + 0.23);
+      oscillator.frequency.exponentialRampToValueAtTime(to, start + 1.25);
+      gain.gain.setValueAtTime(0.0001, start + 0.23);
+      gain.gain.linearRampToValueAtTime(level, start + 0.32);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 1.4);
+      oscillator.connect(gain).connect(bus);
+      oscillator.start(start + 0.23); oscillator.stop(start + 1.4);
+    });
+  } catch (e) { /* Sound is optional; navigation must still work. */ }
+}
 const sfx = {
   click: () => tone(880, 0.1, "square", 0, 0.06, 1320),
-  planet: () => { tone(110, 1, "sawtooth", 0, 0.07, 440); tone(220, 1, "sine", 0.05, 0.09, 880); },
+  planet: planetTransitionSound,
   win: () => [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.25, "triangle", i * 0.14, 0.14)),
   bad: () => tone(200, 0.3, "sawtooth", 0, 0.08, 100),
 };
 function ambient(on) {
   try {
-    const a = ac();
-    if (on && !amb) {
-      const output = a.createGain(), lowpass = a.createBiquadFilter();
-      output.gain.setValueAtTime(0.0001, a.currentTime);
-      output.gain.linearRampToValueAtTime(0.085, a.currentTime + 2.5);
-      lowpass.type = "lowpass"; lowpass.frequency.value = 380; lowpass.Q.value = 0.45;
-      lowpass.connect(output).connect(narrationMaster());
-      const voices = [
-        ["sine", 55, 0.55], ["triangle", 110, 0.20],
-        ["sine", 130.81, 0.12], ["sine", 164.81, 0.08],
-      ].map(([type, frequency, level]) => {
-        const oscillator = a.createOscillator(), gain = a.createGain();
-        oscillator.type = type; oscillator.frequency.value = frequency;
-        gain.gain.value = level; oscillator.connect(gain).connect(lowpass); oscillator.start();
-        return oscillator;
-      });
-      // Slow harmonic movement gives the drone a score-like shape without percussion.
-      const chords = [
-        [55, 110, 130.81, 164.81], [65.41, 130.81, 164.81, 196],
-        [55, 110, 130.81, 174.61], [61.74, 123.47, 146.83, 185],
-      ];
-      let chord = 0;
-      const cycle = setInterval(() => {
-        if (a.state !== "running") return;
-        chord = (chord + 1) % chords.length;
-        voices.forEach((voice, i) => voice.frequency.setTargetAtTime(chords[chord][i], a.currentTime, 2.8));
-      }, 11000);
-      const sway = a.createOscillator(), swayDepth = a.createGain();
-      sway.frequency.value = 0.075; swayDepth.gain.value = 115;
-      sway.connect(swayDepth).connect(lowpass.frequency); sway.start();
-      amb = { output, voices, sway, cycle };
-    } else if (!on && amb) {
-      const old = amb; amb = null; clearInterval(old.cycle);
-      old.output.gain.cancelScheduledValues(a.currentTime);
-      old.output.gain.setValueAtTime(old.output.gain.value, a.currentTime);
-      old.output.gain.linearRampToValueAtTime(0.0001, a.currentTime + 0.35);
-      [...old.voices, old.sway].forEach((oscillator) => oscillator.stop(a.currentTime + 0.4));
-      setTimeout(() => old.output.disconnect(), 500);
+    if (on) {
+      const media = ambientTrack ||= new Audio("./background_music.mp4");
+      media.loop = false;
+      media.preload = "auto";
+      if (!amb) { media.volume = 0; amb = { media, fade: null, wanted: true, last: performance.now() }; }
+      amb.wanted = true;
+      if (media.currentTime >= 120) media.currentTime = 0;
+      if (media.paused) media.play().catch(() => { if (amb && amb.media === media) amb.wanted = false; });
+      if (!amb.fade) {
+        amb.last = performance.now();
+        amb.fade = setInterval(() => {
+          const active = amb;
+          if (!active) return;
+          const now = performance.now(), elapsed = Math.min(1000, now - active.last);
+          active.last = now;
+          // Use a two-minute passage; fade both ends so the restart never clicks.
+          if (media.currentTime >= 120) { media.volume = 0; media.currentTime = 0; }
+          const passage = Math.max(0, Math.min(1, media.currentTime / 4, (120 - media.currentTime) / 8));
+          const target = (active.wanted ? (narrationDuckTarget < 1 ? 0.18 : 0.85) : 0) * passage;
+          const response = target < media.volume ? 180 : 1600;
+          media.volume += (target - media.volume) * Math.min(1, elapsed / response);
+          if (!active.wanted && media.volume < 0.005) {
+            media.pause(); media.volume = 0; clearInterval(active.fade); amb = null;
+          }
+        }, 40);
+      }
+    } else if (amb) {
+      amb.wanted = false;
     }
   } catch (e) {}
 }
@@ -1554,8 +1576,8 @@ function ForgottenExplorers() {
   const [started, setStarted] = useState(false), [view, setView] = useState("solar");
   const [introVisible, setIntroVisible] = useState(true);
   const [introHandoff, setIntroHandoff] = useState(false);
-  const audioUnlockedRef = useRef(false), startedRef = useRef(false);
-  startedRef.current = started;
+  const audioUnlockedRef = useRef(false), startedRef = useRef(false), viewRef = useRef(view);
+  startedRef.current = started; viewRef.current = view;
   const [sel, setSel] = useState(null), [tab, setTab] = useState("diary"), [part, setPart] = useState(null), [dust, setDust] = useState(0);
   const [speaking, setSpeaking] = useState(false), [voiceId, setVoiceId] = useState(null), [voiceTime, setVoiceTime] = useState(0), [voiceDuration, setVoiceDuration] = useState(0), [notice, setNotice] = useState("");
   const [captionsOn, setCaptionsOn] = useState(false);
@@ -1607,7 +1629,7 @@ function ForgottenExplorers() {
     try {
       ac();
       audioUnlockedRef.current = true;
-      if (startedRef.current && !mutedRef.current) ambient(true);
+      if (startedRef.current && viewRef.current === "solar" && !mutedRef.current) ambient(true);
     } catch (e) { /* Web Audio is optional; playback and exploration still work. */ }
   };
   useEffect(() => {
@@ -1626,6 +1648,11 @@ function ForgottenExplorers() {
       window.removeEventListener("keydown", firstInteraction, true);
     };
   }, []);
+  useEffect(() => {
+    if (!started) return;
+    if (view === "solar" && !muted && audioUnlockedRef.current) ambient(true);
+    else ambient(false);
+  }, [view, started, muted]);
   const beginIntroTransition = () => {
     setIntroHandoff(true);
     startedRef.current = true;
@@ -1641,7 +1668,7 @@ function ForgottenExplorers() {
       window.SpaceNarration?.duck("mission", !m && !audioRef.current.paused && !audioRef.current.ended);
     }
     if (m) ambient(false);
-    else if (startedRef.current && audioUnlockedRef.current) ambient(true);
+    else if (startedRef.current && viewRef.current === "solar" && audioUnlockedRef.current) ambient(true);
   };
   const fly = (k) => {
     unlockAudio();

@@ -24,7 +24,7 @@ const named = program => {
   return map;
 };
 // Declarations this task intentionally rewrote; every other original must be byte-identical.
-const REWRITTEN = new Set(['fn:ForgottenExplorers', 'fn:Space', 'fn:Surface', 'fn:tone', 'fn:ambient', 'const:ac', 'const:root', 'const:M', 'const:VOICE_IDS', 'const:VOICE_TRACKS']);
+const REWRITTEN = new Set(['fn:ForgottenExplorers', 'fn:Space', 'fn:Surface', 'fn:tone', 'fn:ambient', 'const:ac', 'const:root', 'const:M', 'const:sfx', 'const:VOICE_IDS', 'const:VOICE_TRACKS']);
 const base = named(before), now = named(after);
 for (const [key, node] of base) {
   if (REWRITTEN.has(key)) continue;
@@ -40,8 +40,11 @@ const withoutBus = node => JSON.parse(JSON.stringify(clean(node), (key, value) =
   return value;
 }));
 assert.deepEqual(withoutBus(now.get('fn:tone')), clean(base.get('fn:tone')), 'sound-effect synth preserves every parameter');
-assert(updated.includes('const chords = ['), 'ambient score has evolving sustained chords');
-assert(updated.includes('clearInterval(old.cycle)'), 'ambient score releases its chord timer on mute');
+assert(updated.includes('planet: planetTransitionSound'), 'planet selection uses the cinematic transition sound');
+assert(updated.includes('new Audio("./background_music.mp4")'), 'homepage plays the supplied cinematic score');
+assert(updated.includes('if (media.currentTime >= 120) media.currentTime = 0'), 'homepage score uses a short passage');
+assert(updated.includes('media.pause(); media.volume = 0'), 'homepage score fades out and stops');
+assert(updated.includes('narrationDuckTarget < 1 ? 0.18 : 0.85'), 'homepage score ducks under narration');
 const previousHtml = read('tests/fixtures/pre-transcripts.html');
 const rosterHtml = read('tests/fixtures/pre-roster.html');
 const previous = named(parse(previousHtml));

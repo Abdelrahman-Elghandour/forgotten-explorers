@@ -54,7 +54,10 @@
       function align(time, force) {
         var cap = isFinite(audio.duration) ? Math.max(0, audio.duration - 0.01) : length;
         var expected = Math.max(0, Math.min(time, cap));
-        if (force || Math.abs((Number(audio.currentTime) || 0) - expected) > 0.09) {
+        // Small clock differences are normal while decoding starts. Repeated tiny
+        // seeks can audibly retrigger the first syllable of the narration.
+        var tolerance = force ? 0.12 : 0.5;
+        if (Math.abs((Number(audio.currentTime) || 0) - expected) > tolerance) {
           try { audio.currentTime = expected; } catch (error) { /* retry after metadata */ }
         }
         audio.playbackRate = Number(video.playbackRate) || 1;
@@ -97,9 +100,8 @@
           if (!audio.paused && !primePending) pause();
           else duck(false);
         } else {
-          align(expectedTime(), force);
           if (audio.paused) playAt(expectedTime(), false);
-          else if (!pending) duck(true);
+          else if (!pending) { align(expectedTime(), force); duck(true); }
         }
         // Ease the existing film score down/up, never replace its soundtrack.
         var volume = Number(video.volume);
