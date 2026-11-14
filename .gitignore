@@ -8,3 +8,15 @@ node_modules/
 video_upload.json
 logo_upload.json
 tests/captures/
+film/raw/
+film/seg/
+film/cards/
+film/*.wav
+film/*.jpg
+film/prev_*.jpg
+film/chk_*.jpg
+film/tr_*.jpg
+film/cut_sheet.jpg
+film/transitions.jpg
+film/picture.mp4
+film/bed.wav
