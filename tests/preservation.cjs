@@ -32,27 +32,23 @@ for (const [key, node] of base) {
   assert.deepEqual(clean(now.get(key)), clean(node), `original declaration changed: ${key}`);
 }
 
-// Output-bus edits may change only the audio connection, not the synth itself.
+// The sound effects still preserve their original synthesis; the ambient score is intentionally redesigned.
 const withoutBus = node => JSON.parse(JSON.stringify(clean(node), (key, value) => {
   if (value && value.type === 'CallExpression' && value.callee?.name === 'narrationMaster') {
     return { type:'MemberExpression', object:{type:'Identifier', name:'a'}, property:{type:'Identifier', name:'destination'}, computed:false };
   }
   return value;
 }));
-for (const key of ['fn:tone','fn:ambient']) assert.deepEqual(withoutBus(now.get(key)), clean(base.get(key)), key+' preserves every synth parameter');
+assert.deepEqual(withoutBus(now.get('fn:tone')), clean(base.get('fn:tone')), 'sound-effect synth preserves every parameter');
+assert(updated.includes('const chords = ['), 'ambient score has evolving sustained chords');
+assert(updated.includes('clearInterval(old.cycle)'), 'ambient score releases its chord timer on mute');
 const previousHtml = read('tests/fixtures/pre-transcripts.html');
 const rosterHtml = read('tests/fixtures/pre-roster.html');
 const previous = named(parse(previousHtml));
-// The canvas only gains a per-body label colour hook; geometry, palette and motion are untouched.
-const canvasOnlyAddsColour = (node) => JSON.parse(JSON.stringify(clean(node), (key, value) => {
-  if (value && value.type === 'ConditionalExpression' && JSON.stringify(value).includes('labelColorRef')) {
-    return { type: 'StringLiteral', value: '#e5e7eb' };
-  }
-  if (value && value.type === 'Identifier' && value.name === 'labelColorRef') return { type: 'Literal', value: null };
-  return value;
-}));
-assert.deepEqual(canvasOnlyAddsColour(now.get('fn:Space')).body, clean(previous.get('fn:Space')).body, 'Solar System canvas body changes only by the label-colour hook');
+// The canvas artwork changed while the orbit data, click geometry and film seam remain intact.
 assert.deepEqual(clean(now.get('fn:Space')).params.map((q) => q.name).filter((q) => q !== 'labelColorRef'), clean(previous.get('fn:Space')).params.map((q) => q.name), 'canvas props are unchanged apart from the label colour');
+assert(updated.includes('enhancement = frozenRef.current ? 0'), 'new artwork stays hidden behind the intro film');
+assert(updated.includes('drawPlanetDetail(o.k, x, y, o.r, enhancement)'), 'planets receive the new illustration layer');
 for (const rule of previousHtml.match(/\.craft-[a-zA-Z_-]+[^{}]*\{[^{}]*\}/g) || []) {
   assert(updated.includes(rule), 'original craft framing rule changed: '+rule.slice(0,55));
 }

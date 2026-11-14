@@ -194,12 +194,43 @@ function ambient(on) {
   try {
     const a = ac();
     if (on && !amb) {
-      const g = a.createGain(); g.gain.value = 0.03;
-      const o1 = a.createOscillator(), o2 = a.createOscillator(), l = a.createOscillator(), lg = a.createGain();
-      o1.frequency.value = 55; o2.type = "triangle"; o2.frequency.value = 82.4; l.frequency.value = 0.12; lg.gain.value = 0.015;
-      l.connect(lg).connect(g.gain); o1.connect(g); o2.connect(g); g.connect(narrationMaster());
-      [o1, o2, l].forEach((o) => o.start()); amb = { g, os: [o1, o2, l] };
-    } else if (!on && amb) { amb.os.forEach((o) => o.stop()); amb.g.disconnect(); amb = null; }
+      const output = a.createGain(), lowpass = a.createBiquadFilter();
+      output.gain.setValueAtTime(0.0001, a.currentTime);
+      output.gain.linearRampToValueAtTime(0.085, a.currentTime + 2.5);
+      lowpass.type = "lowpass"; lowpass.frequency.value = 380; lowpass.Q.value = 0.45;
+      lowpass.connect(output).connect(narrationMaster());
+      const voices = [
+        ["sine", 55, 0.55], ["triangle", 110, 0.20],
+        ["sine", 130.81, 0.12], ["sine", 164.81, 0.08],
+      ].map(([type, frequency, level]) => {
+        const oscillator = a.createOscillator(), gain = a.createGain();
+        oscillator.type = type; oscillator.frequency.value = frequency;
+        gain.gain.value = level; oscillator.connect(gain).connect(lowpass); oscillator.start();
+        return oscillator;
+      });
+      // Slow harmonic movement gives the drone a score-like shape without percussion.
+      const chords = [
+        [55, 110, 130.81, 164.81], [65.41, 130.81, 164.81, 196],
+        [55, 110, 130.81, 174.61], [61.74, 123.47, 146.83, 185],
+      ];
+      let chord = 0;
+      const cycle = setInterval(() => {
+        if (a.state !== "running") return;
+        chord = (chord + 1) % chords.length;
+        voices.forEach((voice, i) => voice.frequency.setTargetAtTime(chords[chord][i], a.currentTime, 2.8));
+      }, 11000);
+      const sway = a.createOscillator(), swayDepth = a.createGain();
+      sway.frequency.value = 0.075; swayDepth.gain.value = 115;
+      sway.connect(swayDepth).connect(lowpass.frequency); sway.start();
+      amb = { output, voices, sway, cycle };
+    } else if (!on && amb) {
+      const old = amb; amb = null; clearInterval(old.cycle);
+      old.output.gain.cancelScheduledValues(a.currentTime);
+      old.output.gain.setValueAtTime(old.output.gain.value, a.currentTime);
+      old.output.gain.linearRampToValueAtTime(0.0001, a.currentTime + 0.35);
+      [...old.voices, old.sway].forEach((oscillator) => oscillator.stop(a.currentTime + 0.4));
+      setTimeout(() => old.output.disconnect(), 500);
+    }
   } catch (e) {}
 }
 window.addEventListener("fe:narration-duck", (event) => {
@@ -281,18 +312,89 @@ function Space({ solar, onPick, labelRef, labelColorRef, frozen, labelAlpha }) {
   frozenRef.current = frozen === true;
   alphaRef.current = labelAlpha == null ? 1 : labelAlpha;
   useEffect(() => {
-    const c = cv.current, g = c.getContext("2d"); let W, H, raf, t = 0, shoot = null;
+    const c = cv.current, g = c.getContext("2d"); let W, H, raf, t = 0, shoot = null, enhancement = 0;
     const stars = Array.from({ length: 300 }, () => ({ x: Math.random(), y: Math.random(), z: Math.random() * 0.9 + 0.1, p: Math.random() * 6 }));
-    const size = () => { W = c.width = innerWidth; H = c.height = innerHeight; };
+    const haze = document.createElement("canvas"), hg = haze.getContext("2d");
+    const size = () => {
+      W = c.width = innerWidth; H = c.height = innerHeight;
+      haze.width = W; haze.height = H;
+      if (!hg) return;
+      const dark = hg.createLinearGradient(0, 0, W, H);
+      dark.addColorStop(0, "#050916"); dark.addColorStop(0.48, "#080d1d"); dark.addColorStop(1, "#03050e");
+      hg.fillStyle = dark; hg.fillRect(0, 0, W, H);
+      [
+        [0.18, 0.25, 0.38, "rgba(54,85,145,.22)"],
+        [0.74, 0.57, 0.43, "rgba(63,42,117,.20)"],
+        [0.52, 0.42, 0.30, "rgba(33,96,131,.13)"],
+      ].forEach(([x, y, radius, color]) => {
+        const nebula = hg.createRadialGradient(W*x, H*y, 0, W*x, H*y, Math.max(W,H)*radius);
+        nebula.addColorStop(0, color); nebula.addColorStop(1, "rgba(0,0,0,0)");
+        hg.fillStyle = nebula; hg.fillRect(0, 0, W, H);
+      });
+      // A soft diagonal band reads as the Milky Way without competing with the orbits.
+      hg.save(); hg.translate(W * .5, H * .48); hg.rotate(-.32);
+      const band = hg.createLinearGradient(0, -H*.28, 0, H*.28);
+      band.addColorStop(0, "rgba(110,155,210,0)"); band.addColorStop(.5, "rgba(110,155,210,.095)"); band.addColorStop(1, "rgba(110,155,210,0)");
+      hg.fillStyle = band; hg.fillRect(-W, -H*.28, W*2, H*.56); hg.restore();
+      let seed = 2026;
+      const random = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+      for (let i = 0; i < Math.min(950, W * H / 900); i++) {
+        const x = random()*W, y = random()*H, radius = random() < .07 ? 1.4 : .55;
+        hg.fillStyle = `rgba(190,216,255,${.08 + random()*.31})`;
+        hg.fillRect(x, y, radius, radius);
+      }
+    };
     size(); addEventListener("resize", size);
     const ball = (x, y, r, col) => {
       const gr = g.createRadialGradient(x - r / 3, y - r / 3, r / 6, x, y, r);
       gr.addColorStop(0, "#fff"); gr.addColorStop(0.25, col); gr.addColorStop(1, "#05070d");
       g.shadowColor = col; g.shadowBlur = 22; g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.shadowBlur = 0;
     };
+    const drawPlanetDetail = (kind, x, y, r, opacity) => {
+      const palette = {
+        earth: ["#92c7eb", "#2771ad", "#102747"], moon: ["#f0eee3", "#a9adba", "#555d70"],
+        mars: ["#ffba78", "#b95a37", "#5a2430"], venus: ["#fff0b2", "#d3a557", "#6c4c3c"],
+        titan: ["#f7d6a0", "#bc805b", "#5b4560"], deep: ["#c8b8ff", "#7669c4", "#282b67"],
+      }[kind];
+      g.save(); g.globalAlpha = opacity;
+      g.beginPath(); g.ellipse(x, y, r, r, 0, 0, Math.PI*2); g.clip();
+      const sphere = g.createLinearGradient(x-r, y-r, x+r, y+r);
+      sphere.addColorStop(0, palette[0]); sphere.addColorStop(.48, palette[1]); sphere.addColorStop(1, palette[2]);
+      g.fillStyle = sphere; g.fillRect(x-r, y-r, r*2, r*2);
+      if (kind === "earth") {
+        g.fillStyle = "rgba(92,165,115,.92)";
+        [[-.35,-.28,.32,.28],[.42,.18,.31,.42],[-.13,.62,.24,.18]].forEach(([dx,dy,rx,ry]) => {
+          g.beginPath(); g.ellipse(x+dx*r, y+dy*r, rx*r, ry*r, -.45, 0, Math.PI*2); g.fill();
+        });
+        g.strokeStyle = "rgba(247,252,255,.65)"; g.lineWidth = 1.1;
+        g.beginPath(); g.ellipse(x-r*.12, y-r*.25, r*.85, r*.24, -.25, 0, Math.PI); g.stroke();
+      } else if (kind === "mars" || kind === "moon") {
+        g.fillStyle = kind === "mars" ? "rgba(82,40,38,.34)" : "rgba(72,82,101,.28)";
+        [[-.35,.22,.27], [.42,-.26,.18], [.38,.48,.12]].forEach(([dx,dy,rr]) => {
+          g.beginPath(); g.ellipse(x+dx*r, y+dy*r, rr*r, rr*r*.62, -.3, 0, Math.PI*2); g.fill();
+        });
+        if (kind === "mars") { g.fillStyle = "rgba(255,233,199,.65)"; g.fillRect(x-r*.28, y-r*.83, r*.55, r*.12); }
+      } else {
+        g.strokeStyle = kind === "venus" ? "rgba(255,243,196,.48)" : "rgba(247,220,203,.45)";
+        g.lineWidth = kind === "titan" ? 2.8 : 1.4;
+        [-.55,-.18,.2,.56].forEach((offset) => {
+          g.beginPath(); g.ellipse(x, y+offset*r, r*1.18, r*.22, -.15, 0, Math.PI); g.stroke();
+        });
+      }
+      const shade = g.createLinearGradient(x-r, y-r, x+r, y+r);
+      shade.addColorStop(0, "rgba(255,255,255,.26)"); shade.addColorStop(.47, "rgba(0,0,0,0)"); shade.addColorStop(1, "rgba(0,0,16,.64)");
+      g.fillStyle = shade; g.fillRect(x-r, y-r, r*2, r*2);
+      g.restore();
+      if (kind === "titan") {
+        g.save(); g.globalAlpha = opacity; g.strokeStyle = "rgba(245,216,166,.84)"; g.lineWidth = 2;
+        g.beginPath(); g.ellipse(x, y, r*1.9, r*.5, -.3, 0, Math.PI); g.stroke(); g.restore();
+      }
+    };
     const draw = () => {
       if (!frozenRef.current) t += 0.004;
       g.clearRect(0, 0, W, H);
+      enhancement = frozenRef.current ? 0 : Math.min(1, enhancement + .018);
+      if (solar && enhancement && hg) { g.globalAlpha = enhancement; g.drawImage(haze, 0, 0); g.globalAlpha = 1; }
       const mx = frozenRef.current ? 0 : mouse.current.x, my = frozenRef.current ? 0 : mouse.current.y;
       stars.forEach((s) => {
         g.fillStyle = `rgba(255,255,255,${(0.25 + s.z * 0.6) * (0.7 + 0.3 * Math.sin(t * 40 + s.p))})`;
@@ -316,7 +418,9 @@ function Space({ solar, onPick, labelRef, labelColorRef, frozen, labelAlpha }) {
           if (o.earth) {
             ball(x, y, 10, "#3b82f6"); const mxp = x + Math.cos(t * 9) * 26, myp = y + Math.sin(t * 9) * 10;
             ball(mxp, myp, 5.5, "#c4c8d4"); pos.current.push({ k: o.k, x: mxp, y: myp, r: 24 });
+            if (enhancement) { drawPlanetDetail("earth", x, y, 10, enhancement); drawPlanetDetail("moon", mxp, myp, 5.5, enhancement); }
           } else { ball(x, y, o.r, o.c); pos.current.push({ k: o.k, x, y, r: o.r + 14 }); }
+          if (!o.earth && enhancement) drawPlanetDetail(o.k, x, y, o.r, enhancement);
           g.fillStyle = labelColorRef && labelColorRef.current ? labelColorRef.current(o.k) : "#e5e7eb"; g.font = "700 14px Tajawal, sans-serif"; g.textAlign = "center";
           g.globalAlpha = alphaRef.current;
           g.fillText(labelRef.current(o.k), x, y + o.r + 24);
