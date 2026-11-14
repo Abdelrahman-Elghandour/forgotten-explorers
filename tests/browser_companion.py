@@ -41,8 +41,8 @@ async def main():
         page.on("pageerror", lambda e: errors.append(str(e)))
         await page.add_init_script(ARCS)
         await page.goto("http://127.0.0.1:3000/", wait_until="load")
-        await page.wait_for_selector(".intro-overlay", timeout=30000)
-        await page.evaluate("() => { const v = document.querySelector('.intro-video'); if (v) { v.muted = true; v.currentTime = Math.max(0, (v.duration || 28) - 1.4); } }")
+        await page.wait_for_selector("#root canvas", state="attached", timeout=30000)
+        
         await page.wait_for_timeout(1900)
         await page.wait_for_timeout(2400)
         await land(page, "أوبورتيونيتي")
@@ -115,8 +115,8 @@ async def main():
         mobile.on("pageerror", lambda e: errors.append(str(e)))
         await mobile.add_init_script(ARCS)
         await mobile.goto("http://127.0.0.1:3000/", wait_until="load")
-        await mobile.wait_for_selector(".intro-overlay", timeout=30000)
-        await mobile.evaluate("() => { const v = document.querySelector('.intro-video'); if (v) { v.muted = true; v.currentTime = Math.max(0, (v.duration || 28) - 1.4); } }")
+        await mobile.wait_for_selector("#root canvas", state="attached", timeout=30000)
+        
         await mobile.wait_for_timeout(1900)
         await mobile.wait_for_timeout(2400)
         await land(mobile, "أوبورتيونيتي")

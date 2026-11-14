@@ -16,14 +16,10 @@ async def check(p,blocked):
  page.on('pageerror',lambda e:errors.append(str(e)))
  await page.add_init_script(INSTRUMENT)
  await page.goto('http://127.0.0.1:3000/',wait_until='load')
+ await page.click("header button[aria-label='Play the opening film']")
  await page.wait_for_selector('.intro-video')
  assert await page.locator('.intro-audio-control,header button[aria-label="mute"]').count()==0
  assert not await page.evaluate('document.querySelector(".intro-video").muted')
- if blocked:
-  await page.wait_for_timeout(200)
-  assert await page.evaluate('document.querySelector(".intro-video").paused')
-  # Ordinary input, not an audio toggle or a dedicated unlock button.
-  await page.keyboard.press('Enter')
  await page.wait_for_function('!document.querySelector(".intro-video").paused && !document.querySelector(".intro-video").muted')
  await page.wait_for_function('window.__introAudio && __introAudio.readyState >= 2')
  await page.evaluate('document.querySelector(".intro-video").currentTime=11.4')
@@ -52,7 +48,8 @@ async def check(p,blocked):
  await browser.close()
  print('PASS:', 'blocked autoplay resumes on Enter without a toggle' if blocked else 'audible autoplay', 'and original narration-clock/caption/ducking/dissolve checks')
 async def main():
+ # The film is opened by a click now, so it always starts with sound; the
+ # blocked-autoplay launch case is covered by tests/browser_launch_audio.py.
  async with async_playwright() as p:
   await check(p,False)
-  await check(p,True)
 if __name__=='__main__':asyncio.run(main())

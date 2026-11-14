@@ -28,6 +28,9 @@ async def main():
    else:await route.fulfill(body=video_bytes,content_type='video/mp4',headers={'Accept-Ranges':'bytes'})
   await page.route('https://images-assets.nasa.gov/video/always-audio-test/**',media)
   await page.goto((ROOT/'index.html').as_uri(),wait_until='load')
+  await page.wait_for_selector('#root canvas',state='attached')
+  # The exhibit opens directly now; the film is opened on demand for this check.
+  await page.click("header button[aria-label='Play the opening film']")
   await page.wait_for_selector('.intro-video')
   assert await page.locator('.intro-audio-control,header button[aria-label="mute"]').count()==0
   await page.evaluate('document.querySelector(".intro-video").currentTime=26.7')

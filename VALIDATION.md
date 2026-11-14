@@ -113,3 +113,26 @@ The independent review identified two concrete recovery issues—autoplay-only a
 Node intro runtime, intro narration, transcript and full feature preservation checks pass. The current pre-change fixture pins all unchanged feature helper functions and the gallery's NASA loading, image fallback, image rendering, navigation and filmstrip code. No recordings, video footage, mission data or caption cues were changed. A complete static build passes. Browser/site/OS autoplay or output-mute restrictions remain outside the application's control; the website does not claim to bypass them.
 
 `tests/browser_always_audio.py` also passes the full `file://` app workflow with real HTML media: one persistent unmuted ambient track on Solar System, surface and story; autoplay-only focus recovery; deliberate story pause retained; gallery-video play/pause, real keyboard seeking and replay; and no mute controls. Its MP4 fixture correctly returns HTTP206 byte ranges so seeking is verified against actual playable data rather than an invalid mock response.
+
+## Direct launch and startup speed
+
+The exhibit no longer waits behind the film. `started` is `true` and `view` is `solar` on the first render, so the canvas, header and title are live immediately; `introVisible` starts `false` and the 28-second film opens from the header button (`aria-label="Play the opening film"`). Opening it still marks the app inert behind the overlay and still ends with the unchanged 1.2-second cross-dissolve into the canvas; a Close control at the top-left guarantees a way back, since the film is now optional rather than mandatory.
+
+Startup work that made the difference:
+
+| Change | Before | After |
+| --- | --- | --- |
+| React + ReactDOM | unpkg CDN | `vendor/react.min.js`, `vendor/react-dom.min.js` |
+| Tailwind | `cdn.tailwindcss.com` (runtime JIT, ~400 KB) | `vendor/tailwind.css`, precompiled, 15 KB |
+| JSX | Babel Standalone (3 MB) parsing 2 700 lines in the browser | `app.js`, precompiled by `tools/compile_app.py` |
+| First contentful paint (local) | 6.0–15.3 s | 0.11–0.22 s |
+
+`index.html` keeps the readable JSX as the canonical source; the block is inert in the browser and `app.js` is generated from it. `python3 tools/compile_app.py` rebuilds it, `--check` fails if it is stale, and `build_static.py` recompiles before copying, so `dist/` can never ship a stale bundle. Babel is a build-time tool and is stripped from `dist/vendor`.
+
+`tests/browser_direct_launch.py` measures first contentful paint and asserts there is no overlay, a title and a canvas, with and without the NASA endpoints reachable. `tests/browser_launch_audio.py` asserts the soundtrack is requested at load, plays unmuted at non-zero volume, and recovers on one ordinary click under `--autoplay-policy=document-user-activation-required`. `tests/visual_parity.py` screenshots the Solar System, the quiz and the sources dialogs in both builds: the dialogs differ by about 1% of pixels (canvas animation behind the glass), confirming the precompiled stylesheet matches the CDN output.
+
+Test suites that used to dismiss the intro were updated for the new flow: the app suites now wait for the canvas instead of the overlay, and the suites that actually exercise the film (`browser_seam.py`, `browser_narration.py`, `browser_always_audio.py`) open it from the header first. `browser_craft.py`'s canvas hit helper now collects arcs over a short window, because the Solar System paints its bodies into a cached layer and only the pulsing Sun redraws each frame. Two long-standing test-side issues were also fixed: the pan check compared a scale that was still easing (now compared within 0.01), and the transcript suite clicked the first `.voice-transcript-toggle`, which is the CC control, instead of the English transcript button.
+
+Passing after the change: `preservation.cjs`, `guide_preservation.cjs`, `intro_runtime.cjs`, `intro_narration.cjs`, `voice_transcripts.cjs`, `browser_direct_launch.py`, `browser_launch_audio.py`, `browser_craft.py`, `browser_surface_scene.py`, `browser_2d_guide.py`, `browser_guide_lifecycle.py`, `browser_transcripts.py`, `browser_resilience.py`, `browser_companion.py`, `browser_seam.py` (Sun offset 4.3 px / 2.3 px), `browser_narration.py`, `browser_always_audio.py`, and a clean `build_static.py` run.
+
+Known limit unchanged: a browser that refuses audible autoplay still needs one interaction before sound starts. Nothing in the app can override that, and it no longer hides behind a mute toggle — the soundtrack simply begins on the first click or key.

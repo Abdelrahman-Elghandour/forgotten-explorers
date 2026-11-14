@@ -26,8 +26,8 @@ async def main():
         page.on('pageerror', lambda e: errors.append(str(e)))
         await page.add_init_script(ARCS + MEDIA)
         await page.goto('http://127.0.0.1:3000/', wait_until='load')
-        await page.wait_for_selector(".intro-overlay", timeout=20000)
-        await page.evaluate("() => { const v = document.querySelector('.intro-video'); if (v) { v.muted = true; v.currentTime = Math.max(0, (v.duration || 28) - 1.4); } }")
+        await page.wait_for_selector("#root canvas", state="attached", timeout=20000)
+        
         await page.wait_for_timeout(1900)
         await page.wait_for_timeout(1500)
 
@@ -53,21 +53,21 @@ async def main():
         quote = await page.locator('.craft-quote').inner_text()
         assert quote.strip('«»').startswith('أهلًا، أنا Opportunity'), quote[:60]
         assert await page.locator('.craft-hud .voice-transcript-readable').count() == 0
-        await page.click('.craft-hud .voice-transcript-toggle')
+        await page.click('.craft-hud .voice-transcript-toggle:not(.craft-cc-control)')
         transcript = await page.locator('.craft-hud .voice-transcript-readable').inner_text()
         assert 'I am Opportunity' in transcript
 
         # Playback: captions follow the measured Arabic timing, not a placeholder.
         await page.wait_for_function('__audioElements.some(a=>a.src.includes("audio/opp.")&&!a.paused)', timeout=15000)
         await page.wait_for_timeout(2200)
-        first = await page.locator('.craft-hud .voice-caption').inner_text()
+        first = await page.locator('.voice-caption').inner_text()
         cues = await page.evaluate('MISSION_CAPTION_CUES.opp')
         now = await page.evaluate('__audioElements.find(a=>a.src.includes("audio/opp.")).currentTime')
         expected = next((c['text'] for c in cues if c['start'] <= now < c['end']), None)
         assert expected and expected in first, (now, expected, first)
         assert 'awaiting' not in first
         await page.wait_for_timeout(9000)
-        later = await page.locator('.craft-hud .voice-caption').inner_text()
+        later = await page.locator('.voice-caption').inner_text()
         assert later != first, 'caption advances with the narration'
 
         # Pause holds position; resume continues rather than restarting.
@@ -88,8 +88,9 @@ async def main():
         await page.wait_for_timeout(300)
         assert 'I am Opportunity' in await page.locator('.craft-quote').inner_text()
         assert await page.locator('.craft-quote').get_attribute('dir') == 'ltr'
-        await page.click('[aria-label="mute"]')
-        assert await page.evaluate('__audioElements.find(a=>a.src.includes("audio/opp.")).muted')
+        # No mute control exists any more; the story stays audible in English.
+        assert await page.locator('[aria-label="mute"],[aria-label="Mute"],[aria-label="Unmute"]').count() == 0
+        assert not await page.evaluate('__audioElements.find(a=>a.src.includes("audio/opp.")).muted')
         await page.click('header button:has-text("عربي")')
         await page.wait_for_timeout(200)
 
@@ -106,7 +107,7 @@ async def main():
         await page.screenshot(path=str(OUT / 'roster_moon.png'))
         assert not errors, errors
         await browser.close()
-    print('PASS: three Mars crafts with a locked InSight teaser, one lunar craft, new Arabic scripts, measured captions, pause/resume and mute.')
+    print('PASS: three Mars crafts with a locked InSight teaser, one lunar craft, new Arabic scripts, measured captions, pause/resume and no mute controls.')
 
 
 if __name__ == '__main__':

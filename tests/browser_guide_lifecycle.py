@@ -25,8 +25,8 @@ async def main():
             window.Audio.prototype = RealAudio.prototype;
         })();""")
         await page.goto((ROOT / "index.html").as_uri(), wait_until="load")
-        await page.wait_for_selector(".intro-overlay", timeout=30000)
-        await page.evaluate("() => { const v = document.querySelector('.intro-video'); if (v) { v.muted = true; v.currentTime = Math.max(0, (v.duration || 28) - 1.4); } }")
+        await page.wait_for_selector("#root canvas", state="attached", timeout=30000)
+        
         await page.wait_for_timeout(1900)
         await page.wait_for_timeout(2200)
         await helpers["land"](page, "أوبورتيونيتي")

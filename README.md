@@ -1,14 +1,16 @@
 # Forgotten Explorers · مستكشفون نسيهم الزمن
 
-A bilingual (Arabic / English) interactive space exhibit about the machines we sent away and then stopped listening to — Opportunity and Spirit on Mars, Lunokhod 1 on the Moon — built as a single-page React app with no build step.
+A bilingual (Arabic / English) interactive space exhibit about the machines we sent away and then stopped listening to — Opportunity and Spirit on Mars, Lunokhod 1 on the Moon — built as a single-page React app.
 
-Open it, watch the 28-second intro settle on our Solar System, then fly to a planet, pick a craft, and read its story while it is read to you.
+Open it and you are already in the Solar System: no splash, no click, no waiting for a film. Fly to a planet, pick a craft, and read its story while it is read to you. The 28-second film is still there, on the **الفيلم / Film** button, for anyone who wants to watch it first.
 
 ---
 
 ## What is inside
 
-**Cinematic opening.** A 28-second Full HD film: the rover on Mars, a telemetry warning, a loss of signal and a silent blackout, then the camera pulls back and decelerates into the exact framing of the live Solar System canvas. The last 1.2 seconds cross-dissolve into the interactive canvas, so the planets appear to become clickable rather than cutting to a new screen. There is no Skip button and no mute toggle. The film remains unmuted and attempts audible autoplay; if the browser blocks playback, any genuine click or keypress automatically starts it with sound, without changing an audio setting.
+**Instant start.** The exhibit paints straight into the live Solar System in about 0.1–0.2 s locally: React and Tailwind are bundled in `vendor/`, the JSX is precompiled into `app.js`, and the 10 MB score is only fetched as audio, never as a blocking asset. The soundtrack is attempted immediately, unmuted, and recovers on the first click if the browser refuses.
+
+**On-demand film.** The 28-second Full HD opening — the rover on Mars, a telemetry warning, a loss of signal and a silent blackout, then the camera pulling back and decelerating into the exact framing of the live canvas — opens from the header button. Its last 1.2 seconds still cross-dissolve into the interactive canvas, so the planets appear to become clickable rather than cutting to a new screen, and a Close control always returns you to the exhibit. There is no mute toggle anywhere.
 
 **Live Solar System.** A canvas of the Sun and five orbits with parallax, hover states and drag-to-pan, drawn in the site's `#05070d` palette with a `#ffb347` Sun.
 
@@ -44,7 +46,10 @@ Windows users can double-click `run_website.bat`.
 
 | Path | Purpose |
 | --- | --- |
-| `index.html` | The whole application: markup, styles and the React tree |
+| `index.html` | The whole application: markup, styles, and the readable JSX source of the React tree |
+| `app.js` | The precompiled application the browser actually runs (generated, do not edit) |
+| `vendor/` | Local React, ReactDOM and the precompiled Tailwind stylesheet |
+| `tools/compile_app.py` | Rebuilds `app.js` from the inline JSX after an edit |
 | `src/components/` | Intro player, media carousel, captions, styles |
 | `src/audio/` | Narration clock, ducking and caption lookup |
 | `src/data/` | Transcripts, caption cues, sentence timings |

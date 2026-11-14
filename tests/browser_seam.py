@@ -51,10 +51,11 @@ async def main():
         page.on("pageerror", lambda e: errors.append(str(e)))
 
         await page.goto(URL, wait_until="load")
+        await page.click("header button[aria-label='Play the opening film']")
         await page.wait_for_selector(".intro-video", timeout=20000)
         await page.wait_for_timeout(2500)
         assert await page.evaluate("!!document.querySelector('canvas')"), "live canvas must exist behind the film"
-        assert not await page.evaluate("!!document.querySelector('h1')"), "Solar System must stay inactive during the film"
+        assert await page.evaluate("!!document.querySelector('[inert]')"), "the app must stay inert behind the film"
         await freeze_canvas(page)
 
         vx, vy = sun_centre(OUT / "video_last.png")
@@ -66,6 +67,8 @@ async def main():
 
         # Natural pre-end dissolve.
         await page.reload(wait_until="load")
+        await page.wait_for_selector("#root canvas", state="attached", timeout=20000)
+        await page.click("header button[aria-label='Play the opening film']")
         await page.wait_for_selector(".intro-video", timeout=20000)
         await page.wait_for_function("document.querySelector('.intro-video').readyState >= 2", timeout=20000)
         await page.evaluate("""() => new Promise(done => {
@@ -84,6 +87,8 @@ async def main():
 
         # The intro has no Skip control; the film itself must hand off at its end.
         await page.reload(wait_until="load")
+        await page.wait_for_selector("#root canvas", state="attached", timeout=20000)
+        await page.click("header button[aria-label='Play the opening film']")
         await page.wait_for_selector(".intro-overlay", timeout=20000)
         assert await page.locator(".intro-skip").count() == 0, "the intro must not offer a Skip control"
         await page.wait_for_timeout(1200)

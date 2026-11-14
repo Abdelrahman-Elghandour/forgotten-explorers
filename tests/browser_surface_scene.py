@@ -59,8 +59,8 @@ async def main():
         page.on("pageerror", lambda e: errors.append(str(e)))
         await page.add_init_script(ARCS)
         await page.goto((ROOT / "index.html").as_uri(), wait_until="load")
-        await page.wait_for_selector(".intro-overlay", timeout=30000)
-        await page.evaluate("() => { const v = document.querySelector('.intro-video'); if (v) { v.muted = true; v.currentTime = Math.max(0, (v.duration || 28) - 1.4); } }")
+        await page.wait_for_selector("#root canvas", state="attached", timeout=30000)
+        
         await page.wait_for_timeout(1900)
         await page.wait_for_timeout(2200)
         await land(page, "أوبورتيونيتي")
@@ -118,7 +118,12 @@ async def main():
         await page.mouse.up()
         await page.wait_for_timeout(900)
         moved = await surface_state(page)
-        assert moved["transform"] == start, "focus scale is unchanged by panning"
+        def scale_of(value):
+            parts = value[value.index("(") + 1:-1].split(",")
+            return float(parts[0])
+        # The focus scale may still be easing when the drag starts; panning must
+        # not change the zoom, so compare the scale itself within a hair.
+        assert abs(scale_of(moved["transform"]) - scale_of(start)) < 0.01, "focus scale is unchanged by panning"
         pans = await page.evaluate("""() => [...document.querySelectorAll('.surface-layer')].map(l => l.style.transform)""")
         assert len(set(pans)) > 1, "parallax layers must shift by different amounts"
         assert not errors, errors
@@ -139,8 +144,8 @@ async def main():
         mobile.on("pageerror", lambda e: errors.append(str(e)))
         await mobile.add_init_script(ARCS)
         await mobile.goto((ROOT / "index.html").as_uri(), wait_until="load")
-        await mobile.wait_for_selector(".intro-overlay", timeout=30000)
-        await mobile.evaluate("() => { const v = document.querySelector('.intro-video'); if (v) { v.muted = true; v.currentTime = Math.max(0, (v.duration || 28) - 1.4); } }")
+        await mobile.wait_for_selector("#root canvas", state="attached", timeout=30000)
+        
         await mobile.wait_for_timeout(1900)
         await mobile.wait_for_timeout(2200)
         await land(mobile, "أوبورتيونيتي")
@@ -156,8 +161,8 @@ async def main():
         rm = await browser.new_page(viewport={"width": 1280, "height": 800}, reduced_motion="reduce")
         await rm.add_init_script(ARCS)
         await rm.goto((ROOT / "index.html").as_uri(), wait_until="load")
-        await rm.wait_for_selector(".intro-overlay", timeout=30000)
-        await rm.evaluate("() => { const v = document.querySelector('.intro-video'); if (v) { v.muted = true; v.currentTime = Math.max(0, (v.duration || 28) - 1.4); } }")
+        await rm.wait_for_selector("#root canvas", state="attached", timeout=30000)
+        
         await rm.wait_for_timeout(1900)
         await rm.wait_for_timeout(2000)
         await land(rm, "أوبورتيونيتي")

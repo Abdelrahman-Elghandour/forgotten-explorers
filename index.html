@@ -6,10 +6,13 @@
   <title>مستكشفون نسيهم الزمن | Forgotten Explorers</title>
   <link rel="stylesheet" href="./src/components/cinematic-intro.css" />
   <link rel="stylesheet" href="./src/components/voice-captions.css" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
+  <!-- Everything is served locally and the app is precompiled, so the exhibit
+       paints immediately and also runs offline from file://. -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" />
+  <link rel="stylesheet" href="./vendor/tailwind.css" />
+  <script src="./vendor/react.min.js"></script>
+  <script src="./vendor/react-dom.min.js"></script>
   <script src="./src/data/intro-transcript.js"></script>
   <script src="./src/data/voice-transcripts.js"></script>
   <script src="./src/data/mission-caption-cues.js"></script>
@@ -1780,8 +1783,10 @@ function Surface({ B, name, list, nm, tg, en, onOpen, onLocked, play, imgs, onUp
 /* ============ APP ============ */
 function ForgottenExplorers() {
   const [lang, setLang] = useState("ar"), [read, setRead] = useState(false);
-  const [started, setStarted] = useState(false), [view, setView] = useState("solar");
-  const [introVisible, setIntroVisible] = useState(true);
+  // Direct launch: the exhibit is interactive on the first frame, and the film
+  // is an on-demand overlay instead of a gate that waits for a click.
+  const [started, setStarted] = useState(true), [view, setView] = useState("solar");
+  const [introVisible, setIntroVisible] = useState(false);
   const [introHandoff, setIntroHandoff] = useState(false);
   const audioUnlockedRef = useRef(false), startedRef = useRef(false), viewRef = useRef(view), introMusicReadyRef = useRef(false);
   startedRef.current = started; viewRef.current = view;
@@ -1864,6 +1869,11 @@ function ForgottenExplorers() {
   useEffect(() => {
     if (started && (audioUnlockedRef.current || introMusicReadyRef.current)) ambient(true);
   }, [started]);
+  // The exhibit is already on screen at launch, so try the soundtrack at once.
+  // A refused audible autoplay is retried by the interaction listener above.
+  useEffect(() => {
+    try { ac(); ambient(true); } catch (e) { /* Silent start still works. */ }
+  }, []);
   const beginMusicLeadIn = () => {
     introMusicReadyRef.current = true;
     ambient(true, true);
@@ -1924,8 +1934,7 @@ function ForgottenExplorers() {
   return (
     <div dir={en ? "ltr" : "rtl"} className="fixed inset-0 overflow-hidden text-slate-100"
       style={{ background: "radial-gradient(ellipse at 20% 10%, #2a1260 0, transparent 45%), radial-gradient(ellipse at 85% 90%, #0b3a5c 0, transparent 50%), #05070d", fontFamily: "'Tajawal','Segoe UI',sans-serif", "--c": view === "solar" ? "#8bd3ff" : B.c, letterSpacing: read ? ".04em" : 0, lineHeight: read ? 2.1 : undefined, fontSize: read ? "1.08rem" : undefined }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
-        .glass{background:rgba(10,14,28,.66);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.14)}
+      <style>{`.glass{background:rgba(10,14,28,.66);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.14)}
         .acc{color:var(--c)} .accbg{background:var(--c);color:#05070d} .accbd{border-color:var(--c)}
         @keyframes flt{0%,100%{transform:translate(-50%,-50%)}50%{transform:translate(-50%,calc(-50% - 8px))}}
         @keyframes wp{0%{opacity:0;transform:scale(.4)}40%{opacity:1}100%{opacity:0;transform:scale(5)}}
@@ -2513,6 +2522,9 @@ function ForgottenExplorers() {
       <header className="fixed top-0 inset-x-0 z-20 p-3 flex items-center justify-between gap-2 flex-wrap">
         <div>{view !== "solar" && <button className={btn} onClick={() => fly("solar")}><ArrowRight size={16} className={en ? "rotate-180" : ""} /> {t("back")}</button>}</div>
         <div className="flex gap-2 flex-wrap">
+          <button className={btn} onClick={() => { play("click"); unlockAudio(); setIntroHandoff(false); setIntroVisible(true); }} aria-label="Play the opening film">
+            <Play size={16} /> <span className="hidden sm:inline">{en ? "Film" : "الفيلم"}</span>
+          </button>
           <button className={btn} onClick={() => setLang(en ? "ar" : "en")}><Languages size={16} /> {en ? "عربي" : "EN"}</button>
           <button className={btn} onClick={() => setRead(!read)} aria-pressed={read} title={t("read")}><Eye size={16} /></button>
           <button className={btn} onClick={() => { play("click"); setModal("time"); }}><Clock size={16} /> <span className="hidden sm:inline">{t("time")}</span></button>
@@ -2636,6 +2648,16 @@ function ForgottenExplorers() {
           voiceSource={INTRO_VOICE}
         />
       )}
+      {/* The film is optional now, so it must always be closable. */}
+      {introVisible && (
+        <button
+          onClick={() => { setIntroVisible(false); try { ambient(true); } catch (e) {} }}
+          aria-label={en ? "Close the film and return to the exhibit" : "إغلاق الفيلم والعودة إلى المعرض"}
+          style={{ position: "fixed", top: 14, left: 14, zIndex: 2147483600, display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 999, border: "1px solid rgba(139,211,255,.35)", background: "rgba(5,7,13,.55)", color: "#e8f0fe", fontWeight: 700, fontSize: 13, backdropFilter: "blur(12px)", cursor: "pointer" }}
+        >
+          <X size={15} /> {en ? "Close" : "إغلاق"}
+        </button>
+      )}
     </div>
   );
 }
@@ -2660,5 +2682,8 @@ class AppBoundary extends React.Component {
 root.render(<AppBoundary><ForgottenExplorers /></AppBoundary>);
 
   </script>
+  <!-- The block above is the readable source. Browsers run ./app.js, which
+       tools/compile_app.py generates from it; edit the block, then recompile. -->
+  <script src="./app.js"></script>
 </body>
 </html>

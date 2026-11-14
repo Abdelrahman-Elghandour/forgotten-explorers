@@ -23,19 +23,16 @@ window.__arcs = [];
 
 
 async def planets(page):
-    # Only the newest frame: older entries are where the planets used to be, and the
-    # hit radius is tight enough that a stale coordinate misses.
+    # Bodies are painted into a cached layer, so the newest frame often holds
+    # only the pulsing Sun. Collect every arc from the last few seconds instead.
     return await page.evaluate("""() => {
         const now = performance.now();
-        const fresh = __arcs.filter(a => now - a[3] < 500);
-        if (!fresh.length) return [];
-        const last = fresh[fresh.length - 1][3];
         const m = new Map();
-        fresh.filter(a => a[3] === last).forEach(a => { const k = Math.round(a[0]) + ',' + Math.round(a[1]);
-            if (!m.has(k)) m.set(k, [a[0], a[1], a[2]]); });
+        __arcs.filter(a => now - a[3] < 4000).forEach(a => {
+            const k = Math.round(a[0]) + ',' + Math.round(a[1]);
+            if (!m.has(k)) m.set(k, [a[0], a[1], a[2]]);
+        });
         return [...m.values()]; }""")
-
-
 async def land(page, want, tries=22):
     """Travel until the surface lists a craft whose label contains `want`."""
     if await page.eval_on_selector_all(".surface-dock", "e => e.length"):
@@ -70,8 +67,8 @@ async def main():
         page.on("pageerror", lambda e: errors.append(str(e)))
         await page.add_init_script(ARCS)
         await page.goto(URL, wait_until="load")
-        await page.wait_for_selector(".intro-overlay", timeout=20000)
-        await page.evaluate("() => { const v = document.querySelector('.intro-video'); if (v) { v.muted = true; v.currentTime = Math.max(0, (v.duration || 28) - 1.4); } }")
+        await page.wait_for_selector("#root canvas", state="attached", timeout=20000)
+        
         await page.wait_for_timeout(1900)
         await page.wait_for_timeout(2200)
 
@@ -131,8 +128,8 @@ async def main():
         mobile.on("pageerror", lambda e: errors.append(str(e)))
         await mobile.add_init_script(ARCS)
         await mobile.goto(URL, wait_until="load")
-        await mobile.wait_for_selector(".intro-overlay", timeout=20000)
-        await mobile.evaluate("() => { const v = document.querySelector('.intro-video'); if (v) { v.muted = true; v.currentTime = Math.max(0, (v.duration || 28) - 1.4); } }")
+        await mobile.wait_for_selector("#root canvas", state="attached", timeout=20000)
+        
         await mobile.wait_for_timeout(1900)
         await mobile.wait_for_timeout(2200)
         mlabels = await land(mobile, "أوبورتيونيتي")
