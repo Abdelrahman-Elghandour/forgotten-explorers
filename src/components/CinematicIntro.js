@@ -7,6 +7,7 @@
   var h = React.createElement;
   var DISSOLVE_MS = 1200;
   var DISSOLVE_LEAD = 1.2; // seconds before the end where the canvas takes over
+  var MUSIC_LEAD = 6; // the homepage score enters softly before the visual dissolve
 
   function isIntroControl(target) {
     var node = target;
@@ -67,6 +68,7 @@
     var explicitMuteRef = React.useRef(false);
     var interactionConsumedRef = React.useRef(false);
     var completedRef = React.useRef(false);
+    var musicLeadRef = React.useRef(false);
     var playEpochRef = React.useRef(0);
     var completionTimerRef = React.useRef(null);
     var volumeRampRef = React.useRef(null);
@@ -77,6 +79,7 @@
     var firstInteractionRef = React.useRef(props.onFirstInteraction);
     var mutedChangeRef = React.useRef(props.onMutedChange);
     var beginTransitionRef = React.useRef(props.onBeginTransition);
+    var musicLeadCallbackRef = React.useRef(props.onMusicLeadIn);
     var completeRef = React.useRef(props.onComplete);
     var languageToggleRef = React.useRef(props.onLanguageToggle);
     var source = sources[sourceIndex] || sources[0];
@@ -95,6 +98,7 @@
     firstInteractionRef.current = props.onFirstInteraction;
     mutedChangeRef.current = props.onMutedChange;
     beginTransitionRef.current = props.onBeginTransition;
+    musicLeadCallbackRef.current = props.onMusicLeadIn;
     completeRef.current = props.onComplete;
     languageToggleRef.current = props.onLanguageToggle;
 
@@ -267,6 +271,10 @@
       var time = Number(video.currentTime) || 0;
       setCurrentTime(time);
       var length = Number(video.duration);
+      if (!completedRef.current && !musicLeadRef.current && isFinite(length) && length > MUSIC_LEAD && time >= length - MUSIC_LEAD) {
+        musicLeadRef.current = true;
+        if (typeof musicLeadCallbackRef.current === "function") musicLeadCallbackRef.current();
+      }
       if (!completedRef.current && isFinite(length) && length > DISSOLVE_LEAD && time >= length - DISSOLVE_LEAD) {
         finishIntro();
       }

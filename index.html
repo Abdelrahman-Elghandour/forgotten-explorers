@@ -222,14 +222,15 @@ const sfx = {
   win: () => [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.25, "triangle", i * 0.14, 0.14)),
   bad: () => tone(200, 0.3, "sawtooth", 0, 0.08, 100),
 };
-function ambient(on) {
+function ambient(on, early = false) {
   try {
     if (on) {
       const media = ambientTrack ||= new Audio("./background_music.mp4");
       media.loop = false;
       media.preload = "auto";
-      if (!amb) { media.volume = 0; amb = { media, fade: null, wanted: true, last: performance.now() }; }
+      if (!amb) { media.volume = 0; amb = { media, fade: null, wanted: true, early, last: performance.now() }; }
       amb.wanted = true;
+      amb.early = early;
       if (media.currentTime >= 120) media.currentTime = 0;
       if (media.paused) media.play().catch(() => { if (amb && amb.media === media) amb.wanted = false; });
       if (!amb.fade) {
@@ -242,7 +243,8 @@ function ambient(on) {
           // Use a two-minute passage; fade both ends so the restart never clicks.
           if (media.currentTime >= 120) { media.volume = 0; media.currentTime = 0; }
           const passage = Math.max(0, Math.min(1, media.currentTime / 4, (120 - media.currentTime) / 8));
-          const target = (active.wanted ? (narrationDuckTarget < 1 ? 0.18 : 0.85) : 0) * passage;
+          const level = active.early ? 0.075 : narrationDuckTarget < 1 ? 0.18 : 0.85;
+          const target = (active.wanted ? level : 0) * passage;
           const response = target < media.volume ? 180 : 1600;
           media.volume += (target - media.volume) * Math.min(1, elapsed / response);
           if (!active.wanted && media.volume < 0.005) {
@@ -1576,7 +1578,7 @@ function ForgottenExplorers() {
   const [started, setStarted] = useState(false), [view, setView] = useState("solar");
   const [introVisible, setIntroVisible] = useState(true);
   const [introHandoff, setIntroHandoff] = useState(false);
-  const audioUnlockedRef = useRef(false), startedRef = useRef(false), viewRef = useRef(view);
+  const audioUnlockedRef = useRef(false), startedRef = useRef(false), viewRef = useRef(view), introMusicReadyRef = useRef(false);
   startedRef.current = started; viewRef.current = view;
   const [sel, setSel] = useState(null), [tab, setTab] = useState("diary"), [part, setPart] = useState(null), [dust, setDust] = useState(0);
   const [speaking, setSpeaking] = useState(false), [voiceId, setVoiceId] = useState(null), [voiceTime, setVoiceTime] = useState(0), [voiceDuration, setVoiceDuration] = useState(0), [notice, setNotice] = useState("");
@@ -1629,7 +1631,7 @@ function ForgottenExplorers() {
     try {
       ac();
       audioUnlockedRef.current = true;
-      if (startedRef.current && viewRef.current === "solar" && !mutedRef.current) ambient(true);
+      if ((startedRef.current || introMusicReadyRef.current) && viewRef.current === "solar" && !mutedRef.current) ambient(true, !startedRef.current);
     } catch (e) { /* Web Audio is optional; playback and exploration still work. */ }
   };
   useEffect(() => {
@@ -1650,15 +1652,19 @@ function ForgottenExplorers() {
   }, []);
   useEffect(() => {
     if (!started) return;
-    if (view === "solar" && !muted && audioUnlockedRef.current) ambient(true);
+    if (view === "solar" && !muted && (audioUnlockedRef.current || introMusicReadyRef.current)) ambient(true);
     else ambient(false);
   }, [view, started, muted]);
+  const beginMusicLeadIn = () => {
+    introMusicReadyRef.current = true;
+    if (!mutedRef.current) ambient(true, true);
+  };
   const beginIntroTransition = () => {
     setIntroHandoff(true);
     startedRef.current = true;
     setView("solar");
     setStarted(true);
-    if (audioUnlockedRef.current && !mutedRef.current) ambient(true);
+    if (!mutedRef.current && (audioUnlockedRef.current || introMusicReadyRef.current)) ambient(true);
   };
   const setAppMuted = (m) => {
     mutedRef.current = m;
@@ -1668,7 +1674,7 @@ function ForgottenExplorers() {
       window.SpaceNarration?.duck("mission", !m && !audioRef.current.paused && !audioRef.current.ended);
     }
     if (m) ambient(false);
-    else if (startedRef.current && viewRef.current === "solar" && audioUnlockedRef.current) ambient(true);
+    else if (viewRef.current === "solar" && (audioUnlockedRef.current || introMusicReadyRef.current)) ambient(true, !startedRef.current);
   };
   const fly = (k) => {
     unlockAudio();
@@ -2427,6 +2433,7 @@ function ForgottenExplorers() {
           muted={muted}
           onMutedChange={setAppMuted}
           onFirstInteraction={unlockAudio}
+          onMusicLeadIn={beginMusicLeadIn}
           onBeginTransition={beginIntroTransition}
           onComplete={() => setIntroVisible(false)}
           onLanguageToggle={() => setLang(en ? "ar" : "en")}

@@ -7,7 +7,7 @@ const settle = async () => { for (let i = 0; i < 8; i++) await Promise.resolve()
 
 function mount(play) {
   const effects = [], cleanups = [], listeners = new Map(), timers = new Map(), intervals = new Map();
-  let parentMuted = false, unlocks = 0, begins = 0, completes = 0, timerID = 0, intervalID = 0;
+  let parentMuted = false, unlocks = 0, leads = 0, begins = 0, completes = 0, timerID = 0, intervalID = 0;
   const video = {
     muted:false, volume:1, duration:28, currentTime:0, pauses:0, loads:0,
     play, pause() { this.pauses++; }, load() { this.loads++; }, removeAttribute() {}
@@ -38,6 +38,7 @@ function mount(play) {
     lang:'ar', muted:false,
     onMutedChange(value) { parentMuted = value; },
     onFirstInteraction() { unlocks++; },
+    onMusicLeadIn() { leads++; },
     onBeginTransition() { begins++; },
     onComplete() { completes++; }, onLanguageToggle() {}
   });
@@ -50,7 +51,7 @@ function mount(play) {
   }
   return {
     video, timers, intervals, listeners, tree,
-    get state() { return {parentMuted,unlocks,begins,completes}; },
+    get state() { return {parentMuted,unlocks,leads,begins,completes}; },
     button(className) { return find(n => n.type==='button' && n.props.className.includes(className)); },
     ended() { find(n => n.type==='video').props.onEnded(); },
     timeUpdate(time, length=28) { video.currentTime = time; video.duration = length; find(n => n.type==='video').props.onTimeUpdate({currentTarget: video}); },
@@ -105,8 +106,11 @@ function mount(play) {
   muted.ended(); muted.unmount(); assert.equal(muted.timers.size,0,'Unmount clears completion timer');
 
   const early = mount(() => Promise.resolve()); await settle();
+  early.timeUpdate(21.9); assert.equal(early.state.leads,0,'Homepage music waits until six seconds before the end');
+  early.timeUpdate(22.0); assert.equal(early.state.leads,1,'Homepage music enters before the visual dissolve');
   early.timeUpdate(26.0); assert.equal(early.state.begins,0,'Dissolve waits for the final 1.2 seconds');
   early.timeUpdate(26.9); assert.equal(early.state.begins,1,'Dissolve begins at duration minus 1.2s');
+  assert.equal(early.state.leads,1,'Music lead-in fires once');
   assert.equal(early.state.completes,0,'Overlay stays until the dissolve finishes');
   early.timeUpdate(27.4); assert.equal(early.state.begins,1,'Time updates cannot restart the dissolve');
   early.unmount();
@@ -120,6 +124,6 @@ function mount(play) {
   race.gesture(); raceReject(new Error('late autoplay rejection')); await settle();
   assert.equal(race.video.muted,false,'Late autoplay failure cannot overwrite user-unlocked audio');
   race.unmount();
-  console.log('PASS: Audible-first autoplay, policy-versus-explicit mute, first interaction, race protection, pre-end 1.2s dissolve, no Skip control, and listener/timer cleanup.');
+  console.log('PASS: Audible-first autoplay, six-second music lead-in, mute, pre-end dissolve, and listener/timer cleanup.');
 })().catch(error => { console.error(error); process.exitCode=1; });
 let raceReject;
