@@ -215,11 +215,6 @@
       }, DISSOLVE_MS);
     }
 
-    function handleSkip() {
-      unlockFromControl();
-      finishIntro();
-    }
-
     function handleLanguageToggle() {
       unlockFromControl();
       if (typeof languageToggleRef.current === "function") {
@@ -288,10 +283,14 @@
       if (!video) return undefined;
 
       video.muted = Boolean(props.muted);
+      video.defaultMuted = false;
+      try { video.volume = 1; } catch (error) { /* detached */ }
       mutedRef.current = Boolean(props.muted);
       setIsMuted(Boolean(props.muted));
       video.load();
-      startPlayback(false);
+      // Sound is the default: attempt audible playback first. Only a browser policy
+      // refusal falls back to a silent start, and the first interaction then unmutes.
+      startPlayback(true);
 
       return function () {
         playEpochRef.current += 1;
@@ -358,7 +357,6 @@
     var muteLabel = isMuted || narration.blocked
       ? "Unmute / تشغيل الصوت"
       : "Mute / كتم الصوت";
-    var skipLabel = isArabic ? "تخطي" : "Skip";
     var languageLabel = isArabic ? "EN" : "عربي";
     var errorLabel = isArabic ? "تعذر تحميل الفيديو. يمكنك التخطي أو المحاولة مرة أخرى." : "The cinematic video could not load. You can skip or try again.";
     var tapLabel = isArabic ? "اضغط للتشغيل" : "Tap to play";
@@ -448,18 +446,6 @@
           },
           languageLabel
         ),
-        h(
-          "button",
-          {
-            type: "button",
-            className: "intro-skip",
-            "data-intro-control": "true",
-            onClick: handleSkip,
-            "aria-label": skipLabel,
-            dir: isArabic ? "rtl" : "ltr"
-          },
-          skipLabel
-        )
       ),
       h(
         "div",
@@ -501,6 +487,17 @@
               "aria-label": tapLabel
             },
             tapLabel
+          ),
+          mediaError && h(
+            "button",
+            {
+              type: "button",
+              className: "intro-tap-play",
+              "data-intro-control": "true",
+              onClick: finishIntro,
+              "aria-label": isArabic ? "متابعة" : "Continue"
+            },
+            isArabic ? "متابعة" : "Continue"
           )
         )
       )

@@ -37,8 +37,9 @@ async def main():
         await page.route("**cdn.jsdelivr.net/**", lambda route: route.abort())
         await page.add_init_script(ARCS)
         await page.goto((ROOT / "index.html").as_uri(), wait_until="load")
-        await page.wait_for_selector(".intro-skip", timeout=30000)
-        await page.click(".intro-skip")
+        await page.wait_for_selector(".intro-overlay", timeout=30000)
+        await page.evaluate("() => { const v = document.querySelector('.intro-video'); if (v) { v.muted = true; v.currentTime = Math.max(0, (v.duration || 28) - 1.4); } }")
+        await page.wait_for_timeout(1900)
         await page.wait_for_timeout(2200)
 
         for label, mid in [("أوبورتيونيتي", "opp"), ("سبيريت", "spi"), ("لونوخود 1", "lun")]:
@@ -93,8 +94,9 @@ async def main():
         await mobile.route("**images-api.nasa.gov/**", lambda route: route.abort())
         await mobile.add_init_script(ARCS)
         await mobile.goto("http://127.0.0.1:3000/", wait_until="load")
-        await mobile.wait_for_selector(".intro-skip", timeout=30000)
-        await mobile.click(".intro-skip")
+        await mobile.wait_for_selector(".intro-overlay", timeout=30000)
+        await mobile.evaluate("() => { const v = document.querySelector('.intro-video'); if (v) { v.muted = true; v.currentTime = Math.max(0, (v.duration || 28) - 1.4); } }")
+        await mobile.wait_for_timeout(1900)
         await mobile.wait_for_timeout(2200)
         await open_mission(mobile, "أوبورتيونيتي")
         await mobile.wait_for_timeout(1000)

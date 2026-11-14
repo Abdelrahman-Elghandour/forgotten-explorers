@@ -82,13 +82,14 @@ async def main():
             title: document.querySelector('h1')?.textContent || null
         })""")
 
-        # Skip path from the very start.
+        # The intro has no Skip control; the film itself must hand off at its end.
         await page.reload(wait_until="load")
-        await page.wait_for_selector(".intro-skip", timeout=20000)
+        await page.wait_for_selector(".intro-overlay", timeout=20000)
+        assert await page.locator(".intro-skip").count() == 0, "the intro must not offer a Skip control"
         await page.wait_for_timeout(1200)
-        await page.click(".intro-skip")
+        await page.evaluate("() => { const v = document.querySelector('.intro-video'); if (v) { v.muted = true; v.currentTime = Math.max(0, (v.duration || 28) - 1.4); } }")
         await page.wait_for_timeout(300)
-        await page.screenshot(path=str(OUT / "skip_dissolve.png"))
+        await page.screenshot(path=str(OUT / "end_dissolve.png"))
         await page.wait_for_timeout(1200)
         skipped = await page.evaluate("""() => ({
             overlay: !!document.querySelector('.intro-overlay'),
@@ -104,7 +105,7 @@ async def main():
     assert not natural["overlay"] and natural["title"], "pre-end dissolve must activate the Solar System"
     assert not skipped["overlay"] and skipped["title"], "Skip must take the same dissolve path"
     assert not errors, errors
-    print("PASS: film and canvas share the same Sun/orbit framing; pre-end dissolve and Skip both hand off cleanly.")
+    print("PASS: film and canvas share the same Sun/orbit framing; pre-end dissolve hands off cleanly with no Skip control.")
 
 
 if __name__ == "__main__":

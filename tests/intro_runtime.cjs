@@ -87,13 +87,15 @@ function mount(play) {
   assert.equal(natural.state.unlocks,0,'Natural ending without interaction does not attempt Web Audio unlock');
   natural.unmount();
 
-  const skip = mount(() => Promise.resolve()); await settle();
-  skip.button('intro-skip').props.onClick(); skip.ended();
-  assert.equal(skip.state.begins,1,'Skip and ended share a completion guard');
-  assert.equal(skip.state.unlocks,1,'Skip unlocks audio synchronously');
-  assert.equal([...skip.timers.values()][0].delay,1200);
-  assert(skip.intervals.size === 1,'Skip fades the soundtrack instead of cutting it');
-  skip.finishTimers(); assert.equal(skip.state.completes,1); skip.unmount();
+  const noSkip = mount(() => Promise.resolve()); await settle();
+  assert.equal(noSkip.button('intro-skip'), null, 'the intro offers no Skip control');
+  assert.equal(noSkip.video.muted, false, 'the film starts unmuted when the browser allows it');
+  assert.equal(noSkip.video.volume, 1, 'the film starts at full volume');
+  noSkip.ended(); noSkip.ended();
+  assert.equal(noSkip.state.begins,1,'Ending twice still completes once');
+  assert.equal([...noSkip.timers.values()][0].delay,1200);
+  assert(noSkip.intervals.size === 1,'The ending fades the soundtrack instead of cutting it');
+  noSkip.finishTimers(); assert.equal(noSkip.state.completes,1); noSkip.unmount();
 
   const muted = mount(() => Promise.resolve()); await settle();
   muted.button('intro-audio-control').props.onClick();
@@ -118,6 +120,6 @@ function mount(play) {
   race.gesture(); raceReject(new Error('late autoplay rejection')); await settle();
   assert.equal(race.video.muted,false,'Late autoplay failure cannot overwrite user-unlocked audio');
   race.unmount();
-  console.log('PASS: Autoplay fallback, policy-versus-explicit mute, first interaction, race protection, pre-end 1.2s dissolve, Skip guard, and listener/timer cleanup.');
+  console.log('PASS: Audible-first autoplay, policy-versus-explicit mute, first interaction, race protection, pre-end 1.2s dissolve, no Skip control, and listener/timer cleanup.');
 })().catch(error => { console.error(error); process.exitCode=1; });
 let raceReject;

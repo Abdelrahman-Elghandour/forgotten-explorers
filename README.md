@@ -8,7 +8,7 @@ Open it, watch the 28-second intro settle on our Solar System, then fly to a pla
 
 ## What is inside
 
-**Cinematic opening.** A 28-second Full HD film: the rover on Mars, a telemetry warning, a loss of signal and a silent blackout, then the camera pulls back and decelerates into the exact framing of the live Solar System canvas. The last 1.2 seconds cross-dissolve into the interactive canvas, so the planets appear to become clickable rather than cutting to a new screen.
+**Cinematic opening.** A 28-second Full HD film: the rover on Mars, a telemetry warning, a loss of signal and a silent blackout, then the camera pulls back and decelerates into the exact framing of the live Solar System canvas. The last 1.2 seconds cross-dissolve into the interactive canvas, so the planets appear to become clickable rather than cutting to a new screen. There is no Skip button: the opening plays through, and sound is on from the first frame — if the browser refuses audible autoplay, the film starts silently and the first click anywhere restores the audio.
 
 **Live Solar System.** A canvas of the Sun and five orbits with parallax, hover states and drag-to-pan, drawn in the site's `#05070d` palette with a `#ffb347` Sun.
 
@@ -59,7 +59,7 @@ Windows users can double-click `run_website.bat`.
 
 ## Notes
 
-- Audio starts muted-safe: browsers block autoplay with sound, so the first click (Skip, sound toggle or a planet) unlocks the Web Audio graph and the narration.
+- The film opens with sound on and full volume. Only when a browser policy blocks audible autoplay does it fall back to a silent start, and the first click or key press anywhere unmutes it and unlocks the Web Audio graph for the narration and ambience.
 - `tests/preservation.cjs` pins every original feature and dataset; the browser suites in `tests/` drive the real app.
 - NASA imagery and mission facts come from public NASA sources; the Arabic voice-over is original narration written for this project.
 

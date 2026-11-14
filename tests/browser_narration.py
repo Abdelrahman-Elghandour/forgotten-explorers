@@ -63,8 +63,8 @@ async def audible(p):
     sync=await page.evaluate('({v:document.querySelector(".intro-video").currentTime,a:__introAudio.currentTime,p:__introAudio.paused})')
     assert before <= sync['v'] <= before+1, sync
     assert not sync['p'] and abs((sync['v']-11.833333333333334)-sync['a'])<.18, sync
-    await page.click('.intro-skip')
-    await page.wait_for_timeout(1450)
+    await page.evaluate("() => { const v = document.querySelector('.intro-video'); if (v) { v.muted = true; v.currentTime = Math.max(0, (v.duration || 28) - 1.4); } }")
+    await page.wait_for_timeout(1600)
     assert await page.locator('.intro-overlay').count()==0
     assert await page.evaluate('__introAudio.paused')
     await page.click('header button:has-text("Transcript")')

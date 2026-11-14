@@ -160,7 +160,6 @@
 }
 
 .intro-language,
-.intro-skip,
 .intro-audio-control,
 .intro-tap-play {
   appearance: none;
@@ -172,8 +171,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.intro-language,
-.intro-skip {
+.intro-language {
   min-height: 38px;
   border-radius: 12px;
   background: rgba(8, 14, 28, 0.68);
@@ -192,14 +190,8 @@
   letter-spacing: 0.08em;
 }
 
-.intro-skip {
-  padding: 0 15px;
-  font-size: 14px;
-  font-weight: 700;
-}
 
 .intro-language:hover,
-.intro-skip:hover,
 .intro-audio-control:hover,
 .intro-tap-play:hover {
   border-color: rgba(176, 225, 255, 0.68);
@@ -207,7 +199,6 @@
 }
 
 .intro-language:focus-visible,
-.intro-skip:focus-visible,
 .intro-audio-control:focus-visible,
 .intro-tap-play:focus-visible {
   outline: 2px solid #a6e4ff;
@@ -424,8 +415,7 @@
     top: max(9px, env(safe-area-inset-top));
   }
 
-  .intro-language,
-  .intro-skip {
+  .intro-language {
     min-height: 32px;
   }
 

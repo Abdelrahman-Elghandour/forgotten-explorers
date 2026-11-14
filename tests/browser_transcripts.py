@@ -26,8 +26,9 @@ async def main():
         page.on('pageerror', lambda e: errors.append(str(e)))
         await page.add_init_script(ARCS + MEDIA)
         await page.goto('http://127.0.0.1:3000/', wait_until='load')
-        await page.wait_for_selector('.intro-skip', timeout=20000)
-        await page.click('.intro-skip')
+        await page.wait_for_selector(".intro-overlay", timeout=20000)
+        await page.evaluate("() => { const v = document.querySelector('.intro-video'); if (v) { v.muted = true; v.currentTime = Math.max(0, (v.duration || 28) - 1.4); } }")
+        await page.wait_for_timeout(1900)
         await page.wait_for_timeout(1500)
 
         # Mars: exactly three crafts, one of them a locked teaser.
