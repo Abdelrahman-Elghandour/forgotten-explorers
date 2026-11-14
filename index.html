@@ -106,40 +106,24 @@ const BODIES = {
 
 // parts order: power, science, mobility, comms — each "how|why"
 const M = [
-  { id: "opp", n: "أوبورتيونيتي", b: "mars", y: 2004, end: 2018, x: 30, t: 62, tag: "الناجية من العواصف",
-    diary: "أنا أوبورتيونيتي. صُمّمت لأعيش 90 يومًا فقط، لكنني بقيت 14 عامًا أتجول في سهل ميريديان. في 2018 غطّتني عاصفة غبار ضخمة حجبت الشمس عن ألواحي، فنمت بهدوء. آخر رسالة لي كانت: بطاريتي منخفضة والظلام يزداد.",
+  { id: "opp", n: "أوبورتيونيتي", b: "mars", y: 2004, end: 2018, x: 22, t: 62, tag: "الناجية من العواصف",
+    diary: "أهلًا، أنا Opportunity. روفر صممني مهندسين وكالة NASA. وصلت للمريخ سنة 2004، وكان المفروض مهمتي تستمر حوالي تلات شهور. بس أنا كان عندي لسه كتير أستكشفه. فضلت شغال أكتر من 14 سنة، ومشيت أكتر من 45 كيلومتر. ولقيت في الصخور أدلة إن المريخ كان فيه مية زمان. لحد ما في سنة 2018 عاصفة تراب ضخمة، حاجة بتحجب الشمس، وما قدرتش أشحن بطاريتي تاني، وكانت دي نهاية رحلتي. أنا لسه هناك وسط الهدوء والتراب، وأتمنى لما تبص للمريخ تفتكر إن في يوم كنت بستكشفه عشانك.",
     s: ["يوليو 2003", "10 يونيو 2018", "14 سنة (المخطط 90 يومًا)", "45.16 كم", "اكتشاف أدلة قوية على وجود مياه قديمة"],
     p: ["ألواح شمسية تحوّل الضوء إلى كهرباء|عاصفة الغبار حجبت الشمس فنفدت الطاقة", "كاميرات ومطياف يحلّل الصخور|وجدت كريات الهيماتيت التي تكوّنت في الماء", "ست عجلات تتسلق الكثبان|بقيت تعمل لسنوات رغم الغبار", "هوائي عالي الكسب يرسل للأرض|لم يعد يتلقى أوامرنا بعد العاصفة"] },
-  { id: "spi", n: "سبيريت", b: "mars", y: 2004, end: 2010, x: 62, t: 30, tag: "التوأم العالق",
-    diary: "أنا سبيريت، توأم أوبورتيونيتي. علقت عجلاتي في رمال ناعمة قرب فوهة تروي. حاولوا إنقاذي شهورًا، ثم جاء الشتاء البارد فلم تكفِ الطاقة لتدفئتي. ما زلت أعمل كمحطة ثابتة أنقل ما أراه.",
+  { id: "spi", n: "سبيريت", b: "mars", y: 2004, end: 2010, x: 34, t: 30, tag: "التوأم العالق",
+    diary: "أنا Spirit، توأم Opportunity. ناسا بعتتنا لمريخ سوا. كل واحد فينا نزل في مكان مختلف سنة 2004، يدور على حكاية المية القديمة على المريخ. مهمتي كانت حوالي تلات شهور، لكني كملت أكتر من ست سنين. وحتى لما عجلة من عجلاتي عطلت، وأنا بجرها كشفت تربة فيها silica. ساعدت العلماء يعرفوا إن المكان ده ممكن يكون فيه ينابيع سخنة زمان. وفي سنة 2009 علقت في تربة ناعمة ما قدرتش أطلع. حاولوا يساعدوني شهور. لكن آخر إشارة مني وصلت سنة 2010. يمكن عجلاتي وقفت، بس اللي اكتشفته لسه بيتحكي. ودي الحكاية اللي أتمنى تفتكرني بيها.",
     s: ["يونيو 2003", "22 مارس 2010", "6 سنوات (المخطط 90 يومًا)", "7.7 كم", "وجدت سيليكا نقية دليلًا على ينابيع حارة قديمة"],
     p: ["ألواح شمسية|الشتاء وزاوية الشمس قلّلا الطاقة", "كاميرا بانورامية ومطياف|كشفت تربة غنية بالسيليكا", "عجلة تالفة تسحب الرمل|علقت في رمال ناعمة", "هوائي رئيسي|سكنت بعد نفاد الدفء والطاقة"] },
-  { id: "vik", n: "فايكنج 1 و 2", b: "mars", y: 1976, end: 1982, x: 75, t: 70, tag: "رواد البحث عن الحياة",
-    diary: "نحن فايكنج. في 1976 هبطنا على المريخ وأرسلنا أول صور ملونة من سطحه. اختبرنا التربة بحثًا عن الميكروبات، وكانت النتائج لغزًا ما زال العلماء يناقشونه.",
-    s: ["1975", "1982 (فايكنج 1)", "6 سنوات (المخطط 90 يومًا)", "ثابت في مكانه", "أول صور ملونة وأول تجارب حياة على المريخ"],
-    p: ["مولدات نظائر مشعة RTG|تضاءلت طاقتها تدريجيًا", "مختبر بيولوجي صغير وكاميرات|نتائجه لم تحسم وجود الحياة", "ذراع آلية تجمع التربة|ثابتان فلا عجلات", "هوائي للمدار ثم الأرض|فقد الاتصال بعد خطأ برمجي"] },
-  { id: "ins", n: "إنسايت", b: "mars", y: 2018, end: 2022, x: 45, t: 45, tag: "المنصت للزلازل",
+  { id: "ins", n: "إنسايت", b: "mars", y: 2018, end: 2022, x: 46, t: 45, tag: "المنصت للزلازل", locked: true,
     diary: "أنا إنسايت. لم أتحرك قط، فقد وُضعت لأنصت إلى قلب المريخ. سجّلت مئات الزلازل المريخية، وعرفنا منها حجم نواة الكوكب. تراكم الغبار على ألواحي، فأطفأت أجهزتي واحدًا بعد الآخر.",
     s: ["مايو 2018", "15 ديسمبر 2022", "4 سنوات (المخطط سنتان)", "ثابت في مكانه", "رصد أكثر من 1300 زلزال مريخي"],
     p: ["ألواح شمسية دائرية|غطاها الغبار تدريجيًا", "جهاز SEIS لقياس الزلازل|كشف حجم النواة وطبقات الكوكب", "ذراع آلية وضعت الأجهزة على الأرض|أنهت مهمتها بنجاح", "هوائيات للإرسال|توقفت حين نفدت الطاقة"] },
-  { id: "pat", n: "باثفايندر وسوجورنر", b: "mars", y: 1997, end: 1997, x: 20, t: 38, tag: "ثورة الروفر الصغير",
-    diary: "أنا باثفايندر، وبداخلي صديقي الصغير سوجورنر بحجم ميكروويف. هبطنا بالوسائد الهوائية وتجولنا في وادي آريس. وفي 1997 صمتُّ بعد أن انتهت بطاريتي.",
-    s: ["ديسمبر 1996", "27 سبتمبر 1997", "3 أشهر (المخطط شهر)", "حوالي 100 متر", "أثبتت أن الروفرات الصغيرة الرخيصة تنجح"],
-    p: ["ألواح شمسية صغيرة|البطارية لم تتحمل البرد", "مطياف أشعة ألفا لتحليل الصخور|حلّل صخرة اسمها يوجي", "ست عجلات صغيرة|قطعت مسافات قصيرة حول المحطة", "هوائي في المحطة|توقف بعد نفاد البطارية"] },
-  { id: "eag", n: "أبولو 11 «النسر»", b: "moon", y: 1969, end: 1969, x: 55, t: 50, tag: "أول خطوة",
-    diary: "أنا مرحلة الهبوط من مركبة النسر. على بحر السكون وقف إنسانان لأول مرة على عالم آخر. حين انتهت الرحلة تركتني هنا، أحرس آثار أقدام لن تمحوها رياح.",
-    s: ["16 يوليو 1969", "21 يوليو 1969", "21 ساعة على السطح", "384,400 كم من الأرض", "أول هبوط بشري على القمر"],
-    p: ["بطاريات تعمل لساعات قليلة|صُمّمت ليوم واحد فقط", "كاميرا وتجارب علمية وعاكس ليزر|ما زال العلماء يقيسون به المسافة للقمر", "محرك هبوط يعمل بالصاروخ|بقيت مرحلته على القمر وصعد الباقي", "هوائي S-band|انتهى استخدامه بانتهاء المهمة"] },
-  { id: "sur", n: "سيرفيور 3", b: "moon", y: 1967, end: 1967, x: 25, t: 70, tag: "زارها رواد أبولو 12",
-    diary: "أنا سيرفيور 3. هبطت قبل البشر بسنتين، ثم زارني رواد أبولو 12 وأخذوا مني كاميرتي لتُدرَس على الأرض. أنا أقدم صديق للإنسان على القمر.",
-    s: ["أبريل 1967", "3 مايو 1967", "أسبوعان", "ثابت في مكانه", "أعاد آلاف الصور وحفر تربة القمر"],
-    p: ["ألواح شمسية وبطارية|لم تتحمل ليل القمر البارد", "كاميرا تلفزيونية|عادت إلى الأرض مع رواد أبولو 12", "ذراع حفر|حفرت خندقًا لقياس صلابة التربة", "هوائي مسطح|سكت مع الليل القمري"] },
-  { id: "lun", n: "لونوخود 1", b: "moon", y: 1970, end: 1971, x: 70, t: 28, tag: "رائد التحكم عن بُعد",
-    diary: "أنا لونوخود 1، أول روفر يجوب عالمًا آخر بتوجيه من الأرض. سائقي كانوا مهندسين في الاتحاد السوفييتي. ظللت أتحرك 11 شهرًا حتى نفد وقودي الدافئ.",
+  { id: "lun", n: "لونوخود 1", b: "moon", y: 1970, end: 1971, x: 40, t: 28, tag: "رائد التحكم عن بُعد",
+    diary: "أنا لونوخود 1، وحكايتي بدأت على القمر سنة 1970. صممني مهندسين من الاتحاد السوفيتي، وبقيت أول rover آلي ينجح في التجول على سطح القمر. كان ليا 8 عجلات، وفريق على الأرض بيسوقني من بعيد ويشوف الطريق من خلال كاميراتي. كانوا مجهزيني لمهمة حوالي 3 شهور، لكني كملت حوالي 11 شهر، ومشيت أكتر من 10 كيلو أصور وأفحص تربة القمر. كنت بشتغل في النهار، وأستنى الليل الطويل يعدي عشان أكمل، لحد ما جه ليل سنة 1971، وبعده ما ردتش عليهم تاني. أنا لسه واقف هناك، ولما تبص للقمر افتكر إن فيه مستكشف صغير سبقك، ومهدلك الطريق.",
     s: ["نوفمبر 1970", "14 سبتمبر 1971", "11 شهرًا (المخطط 3 أشهر)", "10.5 كم", "أول روفر يُدار عن بعد على القمر"],
     p: ["ألواح شمسية وسخان بنظائر|توقف السخان فتجمدت الأجهزة", "كاميرات ومطياف أشعة X|حلّل تربة القمر", "8 عجلات مستقلة|قطع كيلومترات على سطح وعر", "هوائي حلزوني|لم يردّ بعد سبتمبر 1971"] },
   { id: "ven", n: "مارينر والزهرة", b: "venus", y: 1962, end: 1974, x: 50, t: 50, tag: "نظرة أولى على كوكب جحيمي",
-    diary: "نحن مارينر 2 ثم 10. مررنا قرب الزهرة وكشفنا أن حرارتها عالية جدًا. تحت السحب لا واحة جميلة بل فرن ضخم. وبعدنا هبطت مسابير فينيرا السوفييتية وعاشت دقائق قليلة فقط.",
+    diary: "نحن مارينر 2 ثم 10. مررنا قرب الزهرة وكشفنا أن حرارتها عالية جدًا. تحت السحب لا واحة جميلة بل فرن ضخم. وبعدنا هبطت مسابير فينيرا السوفيتية وعاشت دقائق قليلة فقط.",
     s: ["1962 و1973", "1963 و1975", "أشهر قليلة لكل مسبار", "عبور سريع قرب الكوكب", "قياس حرارة الزهرة وأول زيارة ناجحة لكوكب آخر"],
     p: ["ألواح شمسية|الشمس القوية والحرارة أنهكت الأجهزة", "مقياس إشعاع وكاميرا|كشفا السحب والحرارة العالية", "لا عجلات، مسبار عابر|لم يهبط على السطح", "هوائي موجه نحو الأرض|انتهى بعد نفاد وقود التوجيه"] },
   { id: "huy", n: "هويجنز على تيتان", b: "titan", y: 2005, end: 2005, x: 40, t: 60, tag: "متجمد على عالم جليدي",
@@ -157,6 +141,10 @@ const M = [
 ];
 // The Arabic diary remains the source record; enDiary is the exact supplied English transcript.
 M.forEach((mission) => { mission.enDiary = window.VOICE_TRANSCRIPTS && window.VOICE_TRANSCRIPTS[mission.id] || ""; });
+
+/* Missions with a recorded story; the rest of the map is a deliberate teaser. */
+const ACTIVE_IDS = ["opp", "spi", "lun"];
+const COMING_SOON_BODIES = ["venus", "titan", "deep"];
 
 const PART_META = [
   { k: "الطاقة", ic: Sun, pos: [20, 25] }, { k: "الأدوات العلمية", ic: Camera, pos: [78, 25] },
@@ -240,8 +228,8 @@ const LESSON = {
 };
 const SL = { ar: ["تاريخ الإطلاق", "آخر اتصال", "العمر مقابل المخطط", "المسافة", "أهم اكتشاف"], en: ["Launch", "Last contact", "Lifespan vs plan", "Distance", "Key discovery"] };
 /* Voice-over slots: drop ./audio/<id>.mp3 or .ogg in place and it plays — no UI change needed. */
-const VOICE_IDS = ["opp", "spi", "vik", "ins", "pat", "eag", "sur", "lun", "ven", "huy", "voy", "kep", "intro"];
-const VOICE_TRACKS = Object.fromEntries(VOICE_IDS.map((id) => [id, [`./audio/${id}.mp3`, `./audio/${id}.ogg`, `./audio/${id}.wav`]]));
+const VOICE_IDS = ["opp", "spi", "lun", "intro"];
+const VOICE_TRACKS = Object.fromEntries(VOICE_IDS.map((id) => [id, [`./audio/${id}.mp3`, `./audio/${id}.ogg`]]));
 const INTRO_VOICE = "./audio/intro.mp3";
 function missionTranscriptParts(id) {
   const text = window.VOICE_TRANSCRIPTS && window.VOICE_TRANSCRIPTS[id] || "";
@@ -283,7 +271,7 @@ const ORBITS = [
   { k: "titan", d: 0.68, sp: 0.4, r: 17, c: "#e0b07a", a0: 2, ring: true },
   { k: "deep", d: 0.86, sp: 0.15, r: 6, c: "#a78bfa", a0: 4 },
 ];
-function Space({ solar, onPick, labelRef, frozen, labelAlpha }) {
+function Space({ solar, onPick, labelRef, labelColorRef, frozen, labelAlpha }) {
   const cv = useRef(), pos = useRef([]), mouse = useRef({ x: 0, y: 0 });
   // While the intro plays, the canvas holds t = 0, the exact frame the film ends on.
   const frozenRef = useRef(frozen === true), alphaRef = useRef(labelAlpha == null ? 1 : labelAlpha);
@@ -326,7 +314,7 @@ function Space({ solar, onPick, labelRef, frozen, labelAlpha }) {
             ball(x, y, 10, "#3b82f6"); const mxp = x + Math.cos(t * 9) * 26, myp = y + Math.sin(t * 9) * 10;
             ball(mxp, myp, 5.5, "#c4c8d4"); pos.current.push({ k: o.k, x: mxp, y: myp, r: 24 });
           } else { ball(x, y, o.r, o.c); pos.current.push({ k: o.k, x, y, r: o.r + 14 }); }
-          g.fillStyle = "#e5e7eb"; g.font = "700 14px Tajawal, sans-serif"; g.textAlign = "center";
+          g.fillStyle = labelColorRef && labelColorRef.current ? labelColorRef.current(o.k) : "#e5e7eb"; g.font = "700 14px Tajawal, sans-serif"; g.textAlign = "center";
           g.globalAlpha = alphaRef.current;
           g.fillText(labelRef.current(o.k), x, y + o.r + 24);
           g.globalAlpha = 1;
@@ -437,14 +425,14 @@ const CraftIcon = ({ c, on, im, real }) => {
   return <img src={src} alt="" referrerPolicy="no-referrer" onError={() => setBad((b) => b + 1)} className="object-cover rounded-full border-2" style={{ width: w, height: w, borderColor: c, boxShadow: `0 0 ${on ? 22 : 10}px ${c}`, transition: "all .7s" }} />;
 };
 const Eq = () => <span aria-hidden className="flex items-end gap-[3px] h-5">{[0, 1, 2, 3].map((i) => <i key={i} className="w-[3px] h-full rounded-full accbg" style={{ transformOrigin: "bottom", animation: `eq .${6 + i}s ease-in-out ${i * 0.1}s infinite` }} />)}</span>;
-function Surface({ B, name, list, nm, tg, en, onOpen, play, imgs, onUpload, onTell, onToggle, onReplay, speaking, voiceId, notice, real, captionsOn, onCaptionsToggle, voiceCue }) {
+function Surface({ B, name, list, nm, tg, en, onOpen, onLocked, play, imgs, onUpload, onTell, onToggle, onReplay, speaking, voiceId, notice, real, captionsOn, onCaptionsToggle, voiceCue }) {
   const [pan, setPan] = useState(0.3), [focus, setFocus] = useState(null), [drag, setDrag] = useState(null);
   const [hi, setHi] = useState(0), [loaded, setLoaded] = useState(false), [gone, setGone] = useState(false), [naturalW, setNaturalW] = useState(0);
   const box = useRef(), moved = useRef(false);
   const far = useMemo(() => hill(1, 7, 55), []), near = useMemo(() => hill(4, 4, 78), []);
   const px = (m) => (8 + m.x * 0.84) / 100, clamp = (v) => Math.max(0, Math.min(1, v));
   const layer = (w) => ({ width: `${w}%`, transform: `translateX(-${(pan * (w - 100)) / w * 100}%)`, transition: drag ? "none" : "transform .9s cubic-bezier(.2,.8,.2,1)" });
-  const go = (m) => { play("click"); moved.current = false; setFocus(m.id); setPan(clamp((px(m) * 2.5 - 0.5) / 1.5)); onTell(m); };
+  const go = (m) => { if (m.locked) { play("bad"); onLocked(m); return; } play("click"); moved.current = false; setFocus(m.id); setPan(clamp((px(m) * 2.5 - 0.5) / 1.5)); onTell(m); };
   const step = (d) => { const i = list.findIndex((m) => m.id === focus); go(list[(i + d + list.length) % list.length]); };
   const fm = list.find((m) => m.id === focus);
   const im = fm ? imgs[fm.id] : null;
@@ -498,9 +486,11 @@ function Surface({ B, name, list, nm, tg, en, onOpen, play, imgs, onUpload, onTe
         <div className="absolute inset-x-0 bottom-0 h-1/2" style={layer(250)}>
           <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full"><defs><linearGradient id="gr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={B.c} stopOpacity=".85" /><stop offset="1" stopColor="#05070d" /></linearGradient></defs><path d={near} fill="url(#gr)" /></svg>
           {list.map((m, i) => (
-            <button key={m.id} onClick={() => { if (!moved.current) go(m); }} aria-label={nm(m)} className="absolute flex flex-col items-center" style={{ left: `${px(m) * 100}%`, bottom: `${58 - (i % 3) * 8}%`, transform: "translateX(-50%)" }}>
+            <button key={m.id} onClick={() => { if (!moved.current) go(m); }} aria-label={nm(m)} aria-disabled={m.locked ? true : undefined}
+              className={"absolute flex flex-col items-center" + (m.locked ? " craft-locked" : "")} style={{ left: `${px(m) * 100}%`, bottom: `${58 - (i % 3) * 8}%`, transform: "translateX(-50%)" }}>
               <CraftIcon c={B.c} on={focus === m.id} im={imgs[m.id]} real={real} />
               <span className="glass rounded-full px-3 py-1 text-xs font-bold whitespace-nowrap mt-1">{nm(m)}</span>
+              {m.locked && <span className="craft-soon mt-1">{en ? "Script coming soon" : "القصة قريباً"}</span>}
             </button>))}
         </div>
       </div>
@@ -585,7 +575,7 @@ function Surface({ B, name, list, nm, tg, en, onOpen, play, imgs, onUpload, onTe
       <div className="surface-dock" onPointerDown={(e) => e.stopPropagation()} style={{ direction: en ? "ltr" : "rtl" }}>
         {fm && <button className="glass rounded-full w-10 h-10 grid place-items-center shrink-0" onClick={() => step(-1)} aria-label="prev"><ArrowRight size={18} /></button>}
         <div className="flex gap-2 overflow-x-auto flex-1 py-1">{list.map((m) => (
-          <button key={m.id} onClick={() => go(m)} className={`shrink-0 rounded-xl px-3 py-2 text-start ${focus === m.id ? "accbg" : "glass"}`}><b className="block text-sm">{nm(m)}</b><span className="text-xs opacity-80">{m.y}</span></button>))}</div>
+          <button key={m.id} onClick={() => go(m)} aria-disabled={m.locked ? true : undefined} className={`shrink-0 rounded-xl px-3 py-2 text-start ${focus === m.id ? "accbg" : m.locked ? "glass opacity-60" : "glass"}`}><b className="block text-sm">{nm(m)}</b><span className="text-xs opacity-80">{m.locked ? (en ? "Coming soon" : "قريباً") : m.y}</span></button>))}</div>
         {fm && <button className="glass rounded-full w-10 h-10 grid place-items-center shrink-0" onClick={() => step(1)} aria-label="next"><ArrowRight size={18} className="rotate-180" /></button>}
       </div>
     </div>
@@ -606,6 +596,7 @@ function ForgottenExplorers() {
   const [warp, setWarp] = useState(false), [modal, setModal] = useState(null), [year, setYear] = useState(2026), [lm, setLm] = useState(-1);
   const [qi, setQi] = useState(0), [score, setScore] = useState(0), [pick, setPick] = useState(null), [done, setDone] = useState(false), [name, setName] = useState("");
   const [muted, setMuted] = useState(false), [realIcons, setRealIcons] = useState(false), audioRef = useRef(null);
+  const [soon, setSoon] = useState(null);
   const apiImgs = useNasaImages(started);
   const [shots, setShots] = useState({});
   useEffect(() => { (async () => { try { const r = await window.storage.get("shots"); if (r) setShots(JSON.parse(r.value)); } catch (e) {} })(); }, []);
@@ -625,12 +616,15 @@ function ForgottenExplorers() {
   useEffect(() => { setCaptionsOn(en); }, [en]);
   const nm = (m) => (en ? EN[m.id][0] : m.n), tg = (m) => (en ? EN[m.id][1] : m.tag);
   const bn = (k) => (en ? BEN[k] : BODIES[k].n);
-  const labelRef = useRef(bn); labelRef.current = bn;
+  const isSoon = (k) => COMING_SOON_BODIES.indexOf(k) >= 0;
+  const bodyLabel = (k) => bn(k) + (isSoon(k) ? (en ? " · Soon" : " · قريباً") : "");
+  const labelRef = useRef(bodyLabel); labelRef.current = bodyLabel;
+  const labelColorRef = useRef((k) => (isSoon(k) ? "rgba(203,213,225,.62)" : "#e5e7eb")); labelColorRef.current = (k) => (isSoon(k) ? "rgba(203,213,225,.62)" : "#e5e7eb");
 
   const B = { ...BODIES[view], k: view };
   const list = useMemo(() => M.filter((m) => m.b === view), [view]);
   const mission = M.find((m) => m.id === sel);
-  const timeline = useMemo(() => [...M].sort((a, b) => a.y - b.y).filter((m) => m.y <= year), [year]);
+  const timeline = useMemo(() => [...M].filter((m) => ACTIVE_IDS.includes(m.id) && m.y <= year).sort((a, b) => a.y - b.y), [year]);
   const tabs = mission ? [["diary", t("diary")], ["blue", t("blue")], ...(SOLAR.includes(mission.id) ? [["sim", t("sim")]] : []), ["lesson", t("lesson")]] : [];
 
   useEffect(() => () => { if (audioRef.current) audioRef.current.pause(); window.SpaceNarration?.duck("mission", false); }, []);
@@ -683,7 +677,12 @@ function ForgottenExplorers() {
     if (m) ambient(false);
     else if (startedRef.current && audioUnlockedRef.current) ambient(true);
   };
-  const fly = (k) => { unlockAudio(); play("planet"); stop(); setNotice(""); setWarp(true); setTimeout(() => { setView(k); setSel(null); setPart(null); }, 450); setTimeout(() => setWarp(false), 1100); };
+  const fly = (k) => {
+    unlockAudio();
+    if (COMING_SOON_BODIES.indexOf(k) >= 0) { play("bad"); stop(); setSoon(k); return; }
+    play("planet"); stop(); setNotice(""); setWarp(true); setTimeout(() => { setView(k); setSel(null); setPart(null); }, 450); setTimeout(() => setWarp(false), 1100);
+  };
+  useEffect(() => { if (!soon) return undefined; const id = setTimeout(() => setSoon(null), 6000); return () => clearTimeout(id); }, [soon]);
   const openMission = (id, to) => { play("click"); stop(); setNotice(""); setSel(id); setPart(null); setTab(to || "diary"); setDust(0); };
   const toggleMute = () => { unlockAudio(); setAppMuted(!mutedRef.current); };
 
@@ -783,10 +782,14 @@ function ForgottenExplorers() {
         .surface-dock{position:absolute;left:0;right:0;bottom:12px;z-index:10;padding-inline:12px;display:flex;align-items:center;gap:8px;transition:right .5s cubic-bezier(.2,.8,.2,1)}
         @media(min-width:1024px){.surface-focused .surface-dock{right:var(--panel)}}
         @media(prefers-reduced-motion:reduce){.craft-hero{animation:none}.craft-voice.on .craft-wave i{animation:none;transform:scaleY(.8)}}
+        .craft-locked{cursor:not-allowed}
+        .craft-locked img,.craft-locked svg{opacity:.55;filter:saturate(.6)}
+        .craft-soon{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;background:rgba(8,12,22,.72);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(14px);font-size:9.5px;font-weight:800;letter-spacing:.02em;color:#dbe7f7;box-shadow:0 6px 18px rgba(0,0,0,.45);white-space:nowrap}
+        .craft-soon::before{content:"";width:5px;height:5px;border-radius:50%;background:#fbbf24;box-shadow:0 0 8px #fbbf24}
         .fin{animation:fin 1s both} @media (prefers-reduced-motion:reduce){*{animation:none!important}}`}</style>
 
       <div inert={introVisible && !introHandoff ? "" : undefined} aria-hidden={introVisible && !introHandoff ? true : undefined}>
-      <Space solar={view === "solar"} onPick={fly} labelRef={labelRef} frozen={introVisible && !introHandoff} labelAlpha={introHandoff || !introVisible ? 1 : 0} />
+      <Space solar={view === "solar"} onPick={fly} labelRef={labelRef} labelColorRef={labelColorRef} frozen={introVisible && !introHandoff} labelAlpha={introHandoff || !introVisible ? 1 : 0} />
       {warp && <div className="fixed inset-0 z-40 pointer-events-none" style={{ background: "radial-gradient(circle, #fff 0, #7cc4ff 12%, transparent 45%)", animation: "wp 1s ease-in forwards" }} />}
 
       <header className="fixed top-0 inset-x-0 z-20 p-3 flex items-center justify-between gap-2 flex-wrap">
@@ -810,7 +813,17 @@ function ForgottenExplorers() {
         </div>
       )}
 
-      {view !== "solar" && <Surface key={view} imgs={imgs} onUpload={upload} B={B} name={bn(view)} list={list} nm={nm} tg={tg} en={en} onOpen={openMission} play={play} onTell={tellMission} onToggle={toggleVoice} speaking={speaking} voiceId={voiceId} onReplay={replayVoice} notice={notice} real={realIcons} captionsOn={captionsOn} onCaptionsToggle={setCaptionsOn} voiceCue={voiceCue} />}
+      {view !== "solar" && <Surface key={view} imgs={imgs} onUpload={upload} B={B} name={bn(view)} list={list} nm={nm} tg={tg} en={en} onOpen={openMission} onLocked={() => setSoon(view)} play={play} onTell={tellMission} onToggle={toggleVoice} speaking={speaking} voiceId={voiceId} onReplay={replayVoice} notice={notice} real={realIcons} captionsOn={captionsOn} onCaptionsToggle={setCaptionsOn} voiceCue={voiceCue} />}
+
+      {soon && (
+        <div className="fixed inset-0 z-[45] grid place-items-center p-6" role="dialog" aria-modal="true" aria-label={en ? "Coming soon" : "قريباً"} onClick={() => setSoon(null)}>
+          <div className="glass fin rounded-3xl px-7 py-6 text-center max-w-sm" style={{ direction: en ? "ltr" : "rtl", boxShadow: "0 30px 90px rgba(0,0,0,.6)" }} onClick={(e) => e.stopPropagation()}>
+            <p className="text-[10px] font-extrabold uppercase" style={{ letterSpacing: ".28em", color: "rgba(178,208,238,.7)" }}>{en ? "Coming soon" : "قريباً"}</p>
+            <h3 className="mt-2 text-2xl font-extrabold">{bn(soon)}</h3>
+            <p className="mt-2 text-sm text-slate-300 leading-relaxed">{en ? "More missions unlocking soon. The story for this world is still being prepared." : "مهمات جديدة تُفتح قريباً. قصة هذا العالم قيد الإعداد."}</p>
+            <button className="accbg rounded-full px-5 py-2 mt-4 font-bold" onClick={() => setSoon(null)}>{en ? "Got it" : "حسناً"}</button>
+          </div>
+        </div>)}
 
       {/* MISSION CONSOLE */}
       {mission && view !== "solar" && (

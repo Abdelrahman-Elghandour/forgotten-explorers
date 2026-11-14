@@ -1,19 +1,19 @@
 1
-00:00:12,373 --> 00:00:14,453
+00:00:12,333 --> 00:00:14,683
 Don't worry, we haven't forgotten you.
 
 2
-00:00:14,993 --> 00:00:18,053
+00:00:15,233 --> 00:00:18,683
 Through your eyes, we saw worlds we never dreamed we'd reach.
 
 3
-00:00:18,553 --> 00:00:20,853
+00:00:19,233 --> 00:00:21,783
 And you left a mark that time will never erase.
 
 4
-00:00:21,313 --> 00:00:22,613
+00:00:22,233 --> 00:00:23,683
 Maybe your time in space is over,
 
 5
-00:00:23,013 --> 00:00:25,393
+00:00:24,133 --> 00:00:26,883
 but we're here to bring your story back into the light.

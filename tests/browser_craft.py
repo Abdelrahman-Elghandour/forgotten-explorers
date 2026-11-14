@@ -29,23 +29,30 @@ async def planets(page):
         return [...m.values()]; }""")
 
 
-async def land(page, want):
+async def land(page, want, tries=22):
     """Travel until the surface lists a craft whose label contains `want`."""
     if await page.eval_on_selector_all(".surface-dock", "e => e.length"):
         await page.click("header button:has-text('المجموعة الشمسية')")
         await page.wait_for_timeout(1500)
-    for x, y, _ in await planets(page):
+    for attempt in range(tries):
+        pts = await planets(page)
+        if not pts:
+            await page.wait_for_timeout(300)
+            continue
+        x, y, _ = pts[attempt % len(pts)]
         await page.mouse.click(x, y)
         await page.wait_for_timeout(900)
+        if await page.locator('[role="dialog"]').count():
+            await page.click('[role="dialog"] button')
+            await page.wait_for_timeout(350)
+            continue
         labels = await page.eval_on_selector_all(".surface-root button[aria-label]", "els => els.map(e => e.getAttribute('aria-label'))")
-        if labels and want in labels[0]:
+        if labels and any(want in l for l in labels):
             return labels
         if await page.eval_on_selector_all(".surface-dock", "e => e.length"):
             await page.click("header button:has-text('المجموعة الشمسية')")
-            await page.wait_for_timeout(1200)
+            await page.wait_for_timeout(1400)
     raise AssertionError(f"could not reach a surface with {want}")
-
-
 async def main():
     OUT.mkdir(exist_ok=True)
     async with async_playwright() as p:
@@ -90,16 +97,14 @@ async def main():
         await page.click("aside button[aria-label='close']")
         await page.wait_for_timeout(600)
 
-        # A craft with no recording must degrade to a quiet notice, not an error.
+        # The Moon's single craft carries its own narration.
         await page.click("header button:has-text('المجموعة الشمسية')")
         await page.wait_for_timeout(1400)
-        vlabels = await land(page, "مارينر")
+        vlabels = await land(page, "لونوخود")
         await page.click('.surface-root button[aria-label="' + vlabels[0] + '"]')
         await page.wait_for_timeout(1600)
-        await page.click(".craft-voice__btn")
-        await page.wait_for_timeout(1600)
-        print("missing-audio notice:", await page.eval_on_selector_all(".craft-hud .text-amber-300", "els => els.map(e => e.innerText)"))
-        await page.screenshot(path=str(OUT / "craft_voice_missing.png"))
+        print("moon voice:", await page.eval_on_selector(".craft-voice", "e => e.innerText.replace(/\\n/g, ' | ')"))
+        await page.screenshot(path=str(OUT / "craft_voice_moon.png"))
         await page.click("header button:has-text('المجموعة الشمسية')")
         await page.wait_for_timeout(1200)
         mlabels2 = await land(page, "أوبورتيونيتي")

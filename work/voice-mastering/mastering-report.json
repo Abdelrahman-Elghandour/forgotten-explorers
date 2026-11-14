@@ -1,35 +1,83 @@
 {
-  "source": "audio/intro-original.m4a",
-  "master": "audio/intro-studio.wav",
-  "sample_rate": 48000,
-  "channels": 2,
-  "duration_seconds": 14.229333333333335,
-  "filter_chain": "highpass=f=65:p=2,afftdn=nr=4:nf=-65:tn=0,equalizer=f=125:t=q:w=0.8:g=1.0,equalizer=f=320:t=q:w=1.0:g=-2.0,equalizer=f=2800:t=q:w=0.8:g=1.8,deesser=i=0.16:m=0.35:f=0.5,acompressor=threshold=0.075:ratio=1.8:attack=12:release=140:knee=2.828:makeup=1:detection=rms",
-  "loudness_target_lufs": -16,
-  "true_peak_ceiling_dbtp": -1.5,
-  "pre_normalization": {
-    "input_i": "-25.67",
-    "input_tp": "-14.03",
-    "input_lra": "2.00",
-    "input_thresh": "-36.31",
-    "output_i": "-15.85",
-    "output_tp": "-2.07",
-    "output_lra": "1.70",
-    "output_thresh": "-26.56",
-    "normalization_type": "dynamic",
-    "target_offset": "-0.15"
-  },
-  "verified": {
-    "input_i": "-15.99",
-    "input_tp": "-4.37",
-    "input_lra": "2.00",
-    "input_thresh": "-26.75",
-    "output_i": "-15.86",
-    "output_tp": "-2.06",
-    "output_lra": "1.70",
-    "output_thresh": "-26.60",
-    "normalization_type": "dynamic",
-    "target_offset": "-0.14"
-  },
-  "timing": "25 ms measured DSP latency compensated. No original cuts, removed pauses, time-stretch or pitch/voice replacement. Original t=0 retained."
+  "chain": "highpass=f=65:p=2,afftdn=nr=4:nf=-65:tn=0,equalizer=f=125:t=q:w=0.8:g=1.0,equalizer=f=320:t=q:w=1.0:g=-2.0,equalizer=f=2800:t=q:w=0.8:g=1.8,deesser=i=0.16:m=0.35:f=0.5,acompressor=threshold=0.075:ratio=1.8:attack=12:release=140:knee=2.828:makeup=1:detection=rms",
+  "targetLufs": -16,
+  "truePeakDbtp": -1.5,
+  "files": [
+    {
+      "key": "intro",
+      "source": "/home/ubuntu/upload/Intro.m4a.mp4",
+      "archivedOriginal": "work/voice-mastering/originals/intro.mp4",
+      "durationSeconds": 15.68,
+      "decodedDurationSeconds": 15.636,
+      "masterDurationSeconds": 15.547,
+      "measuredDspLatencyMs": 25.0,
+      "compensatedMs": 25.0,
+      "residualOffsetMs": 0.0,
+      "loudnessLufs": -15.84,
+      "truePeakDbtp": -1.5,
+      "peakSample": 1.1484,
+      "outputs": [
+        "audio/intro.mp3",
+        "audio/intro.ogg",
+        "work/voice-mastering/masters/intro.wav"
+      ]
+    },
+    {
+      "key": "spi",
+      "source": "/home/ubuntu/upload/Spiritrover.m4a.mp4",
+      "archivedOriginal": "work/voice-mastering/originals/spi.mp4",
+      "durationSeconds": 39.914667,
+      "decodedDurationSeconds": 39.870688,
+      "masterDurationSeconds": 39.816417,
+      "measuredDspLatencyMs": 24.938,
+      "compensatedMs": 24.94,
+      "residualOffsetMs": 0.0,
+      "loudnessLufs": -16.06,
+      "truePeakDbtp": -1.5,
+      "peakSample": 1.129,
+      "outputs": [
+        "audio/spi.mp3",
+        "audio/spi.ogg",
+        "work/voice-mastering/masters/spi.wav"
+      ]
+    },
+    {
+      "key": "opp",
+      "source": "/home/ubuntu/upload/Opportunityrover.m4a.mp4",
+      "archivedOriginal": "work/voice-mastering/originals/opp.mp4",
+      "durationSeconds": 42.730667,
+      "decodedDurationSeconds": 42.686687,
+      "masterDurationSeconds": 42.66175,
+      "measuredDspLatencyMs": 24.938,
+      "compensatedMs": 24.94,
+      "residualOffsetMs": 0.0,
+      "loudnessLufs": -16.03,
+      "truePeakDbtp": -2.84,
+      "peakSample": 0.9855,
+      "outputs": [
+        "audio/opp.mp3",
+        "audio/opp.ogg",
+        "work/voice-mastering/masters/opp.wav"
+      ]
+    },
+    {
+      "key": "lun",
+      "source": "/home/ubuntu/upload/Lonokhodrover.m4a.mp4",
+      "archivedOriginal": "work/voice-mastering/originals/lun.mp4",
+      "durationSeconds": 42.986667,
+      "decodedDurationSeconds": 42.942687,
+      "masterDurationSeconds": 42.860417,
+      "measuredDspLatencyMs": 24.938,
+      "compensatedMs": 24.94,
+      "residualOffsetMs": 0.0,
+      "loudnessLufs": -16.07,
+      "truePeakDbtp": -2.01,
+      "peakSample": 0.9204,
+      "outputs": [
+        "audio/lun.mp3",
+        "audio/lun.ogg",
+        "work/voice-mastering/masters/lun.wav"
+      ]
+    }
+  ]
 }

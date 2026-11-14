@@ -1,35 +1,49 @@
 # Arabic narration and English transcript handoff
 
-## What changed
+## What changed in this release
 
-The original 28-second intro MP4 is byte-for-byte unchanged. Its existing Solar System ending, 1.2-second cross-dissolve, canvas geometry, craft hero framing and surface navigation are retained. The update adds a separate narration track, caption/transcript controls and bilingual story text; it does not re-encode or regenerate any video.
+Four new Arabic recordings replaced the previous audio: a new intro voice-over, plus stories for Spirit (`spi`), Opportunity (`opp`) and Lunokhod 1 (`lun`). The 28-second intro MP4 is byte-for-byte unchanged, so its Solar System ending, 1.2-second cross-dissolve, canvas geometry, craft hero framing and surface navigation are exactly as delivered before.
 
-The supplied `First10thOfRamadan12.m4a.mp4` is actually audio-only AAC. An unchanged copy is retained as `audio/intro-original.m4a`; browser-compatible derivatives are `audio/intro.mp3` and `audio/intro.ogg`. The track begins at video time **11.833333333333334 seconds**, the first fully black frame after Signal Lost. Its first spoken phrase starts at narration time 0.54 seconds, so the first English subtitle appears at video time 12.373 seconds.
+The supplied files are audio-only AAC despite the `.m4a.mp4` suffix. Unchanged copies are archived under `work/voice-mastering/originals/`; browser editions are `audio/intro.mp3`/`.ogg`, `audio/opp.*`, `audio/spi.*` and `audio/lun.*`. The removed placeholders (`vik`, `ins`, `pat`, `eag`, `sur` and every stale `.wav`) are gone, so no silent 10-second file can play by mistake.
 
-`src/audio/intro-narration.js` follows the video clock, using presented-frame callbacks where supported and a short fallback clock otherwise. Unmuting during the film seeks the narration to `video.currentTime - offset` without changing the video's position. Video pause, seek, mute, rate changes, Skip, narration end and component teardown are handled. While the narrator speaks, the existing video score eases down to 22%; synthesized ambience and SFX ramp to 24% through an owner-aware shared gain bus and recover afterward. The soundtrack is ducked, not replaced.
+## Intro
 
-## English intro transcript
+The narration starts at video time **11.833333333333334 s**, the first fully black frame after Signal Lost. The new recording is 15.55 s long, so it ends inside the zoom-out at about 27.4 s, just before the film's final frame and the cross-dissolve. `src/audio/intro-narration.js` follows the video clock; unmuting mid-film seeks the narration to `video.currentTime - offset` without moving the video.
 
-Don't worry, we haven't forgotten you. Through your eyes, we saw worlds we never dreamed we'd reach, and you left a mark that time will never erase. Maybe your time in space is over, but we're here to bring your story back into the light.
+While the narrator speaks, the video score eases to 22% and synthesized ambience/SFX ramp to 24% through the shared owner-aware gain bus, then recover. The soundtrack is ducked, never replaced.
 
-The five English phrase cues are based on actual Arabic word timestamps, not estimated reading speed. `src/data/intro-transcript.js` contains audio-relative cues and the source Arabic. `subtitles/intro.en.vtt` and `intro.en.srt` contain video-relative cue times. `subtitles/intro-transcript.md` retains the bilingual text, timing table and transcription notes. English cinema captions are on by default during the intro; CC toggles them. Transcript / النص opens the full text during the intro and remains accessible from the main header afterward.
+English phrase subtitles sit at bottom center with a restrained blurred backdrop, and CC plus **Transcript / النص** expose the full text during and after the film. Cue times come from word-level timestamps of the actual recording, stored in `src/data/intro-transcript.js`:
 
-## Spacecraft transcripts
+| Audio time | English subtitle |
+| --- | --- |
+| 0.50 – 2.85 | Don't worry, we haven't forgotten you. |
+| 3.40 – 6.85 | Through your eyes, we saw worlds we never dreamed we'd reach. |
+| 7.40 – 9.95 | And you left a mark that time will never erase. |
+| 10.40 – 11.85 | Maybe your time in space is over, |
+| 12.30 – 15.05 | but we're here to bring your story back into the light. |
 
-Every mission in `M` now has an `enDiary` field populated from `src/data/voice-transcripts.js`. All twelve passages are exactly the user's supplied English text, including punctuation and the Voyager date sentence; they are quoted narration transcripts, not newly verified scientific assertions. The original Arabic diaries, mission statistics, scientific sources and lessons are not edited.
+## Spacecraft stories
 
-EN mode uses `enDiary` in both the selected-craft HUD and the legacy diary console. AR mode keeps the Arabic diary and exposes the English transcript when the viewer enables the EN captions/transcript control. English captions default on when entering EN and off when entering AR. Play/pause truly pauses and resumes the same audio element; Replay restarts it. Actual audio playback time drives measured cue lookup.
+Each new recording maps to its mission ID and drives three things: the Arabic `diary` (verbatim narration), the English `enDiary` transcript, and live English captions timed against real playback. `src/data/mission-caption-cues.js` holds the measured cue rows (14 for Opportunity, 16 for Spirit, 14 for Lunokhod 1); `tests/voice_transcripts.cjs` asserts that each `enDiary` equals the concatenation of its cue text, so transcript and captions cannot drift apart.
 
-### Important recording limitation
+| Mission | Recording | Arabic script | English captions |
+| --- | --- | --- | --- |
+| `opp` Opportunity | 42.7 s | new, verbatim | 14 measured cues |
+| `spi` Spirit | 39.9 s | new, verbatim | 16 measured cues |
+| `lun` Lunokhod 1 | 43.0 s | new, verbatim | 14 measured cues |
 
-Seven supplied mission paths (`opp`, `spi`, `vik`, `ins`, `pat`, `eag`, `sur`) contain **the same 10-second RIFF/WAVE PCM file mislabeled `.mp3`**, not distinct Arabic stories. The speech-to-text result for that common file contains no speech. The `lun`, `ven`, `huy`, `voy` and `kep` recordings are absent. Existing files are preserved unchanged, with correctly named `.wav` copies added as decoder fallbacks. No mission narration is generated or invented.
+Play/pause pauses and resumes the same audio element, Replay restarts it, and captions follow `timeupdate` rather than a wall clock. In Arabic mode the English transcript stays opt-in; English mode shows the English story directly.
 
-Consequently, all twelve full English transcripts are available now, but **verified mission-specific phrase synchronization cannot be completed from the supplied media**. The on-playback fallback is explicitly labeled “English transcript · awaiting matched narration timing,” not presented as timed subtitles. There is no proportional sentence-timing guess.
+### Two transcription normalisations
 
-To complete synchronization, place each real Arabic recording in `audio/<id>.mp3` or `.ogg`, then add its measured audio-relative cue array to `src/data/mission-caption-cues.js`. The player already consumes these arrays through `SpaceNarration.cueAt`; no UI-code change is needed. Keep cue text aligned with the actual recording and preserve the supplied complete `enDiary` text separately.
+Both speech-to-text passes (and an independent Whisper pass) returned a non-word in two places, so those two words were written in their evident intended form while everything else stays verbatim: Opportunity's `حاجة بتحجب الشمس` ("something blocking the Sun") and Spirit's `يمكن عجلاتي وقفت` ("maybe my wheels stopped"). No other wording, pause or emphasis was altered.
+
+## Roster and teaser states
+
+Mars lists Opportunity, Spirit and InSight; the Moon lists only Lunokhod 1. InSight keeps its place on the surface as a disabled teaser with a glassmorphic **القصة قريباً / Script coming soon** badge and cannot open a story. Venus, Titan & outer moons, and Deep Space remain on the orbital map with muted `· قريباً` labels, and clicking one opens a **قريباً / Coming soon** card instead of an unvoiced roster. The Time Machine lists only the three active missions.
 
 ## Running and verification
 
-Run `python3 serve.py` and open `http://localhost:8000/`. The Preview service uses port 3000. The CDN-based app still needs internet access for React, Babel, Tailwind and NASA image requests. `python3 build_static.py` includes audio, sources, imagery, unchanged video and subtitle sidecars in `dist/`.
+Run `python3 serve.py` and open `http://localhost:8000/`; Preview uses port 3000. The CDN-based app still needs internet access for React, Babel, Tailwind and NASA image requests. `python3 build_static.py` copies audio, sources, imagery, the unchanged video and subtitle sidecars into `dist/`.
 
-`node tests/preservation.cjs`, `node tests/voice_transcripts.cjs`, `node tests/intro_runtime.cjs` and `node tests/intro_narration.cjs` cover preserved scientific modules, exact user transcripts, playback policy, timing, ducking and cleanup. Browser checks are `tests/browser_narration.py`, `tests/browser_transcripts.py` and the existing `tests/browser_seam.py`. The source tree includes a pre-change HTML fixture for comparison. No public publication is requested or performed.
+`node tests/preservation.cjs`, `node tests/voice_transcripts.cjs`, `node tests/intro_runtime.cjs` and `node tests/intro_narration.cjs` cover preserved scientific modules, exact scripts and cues, playback policy, timing, ducking and cleanup. `python3 tests/voice_mastering.py` verifies loudness, headroom and phrase alignment. Browser checks are `tests/browser_narration.py`, `tests/browser_transcripts.py`, `tests/browser_craft.py` and `tests/browser_seam.py`.

@@ -6,30 +6,32 @@ The rebuilt intro is 28.000 s, 672 frames, 1920 × 1080 at 24 fps, H.264 with th
 
 ## Seam
 
-`tests/browser_seam.py` runs Chromium against the local server at 1920 × 1080. It freezes the film on its final frame, reveals the canvas behind it, and compares the two: Sun centres are 4.3 px apart horizontally and 2.8 px vertically, and the 50/50 blend in `tests/captures/blend_50.png` shows single planets and orbits with no double image. The same run drives the natural pre-end dissolve and the Skip path; both remove the overlay, activate the Solar System and show the title, with no page errors.
+`tests/browser_seam.py` runs Chromium against the local server at 1920 × 1080. It freezes the film on its final frame, reveals the canvas behind it, and compares the two: Sun centres are 4.3 px apart horizontally and 2.8 px vertically, and the 50/50 blend in `tests/captures/blend_50.png` shows single planets and orbits with no double image. The same run drives the natural pre-end dissolve and the Skip path; both remove the overlay, activate the Solar System and show the title, with no page errors. It still passes unchanged after this revision.
 
 ## Behaviour
 
 `node tests/intro_runtime.cjs` passes autoplay fallback, policy-versus-explicit mute, first background interaction, late-promise race protection, the 1.2-second pre-end trigger, the shared Skip/ended completion guard, 1200 ms timing, soundtrack fade-out, and listener/timer cleanup.
 
-`node tests/preservation.cjs` passes full JSX parsing and semantic equality of every original dataset, dictionary and feature component except the intentionally changed controller and canvas; the canvas keeps its exact orbit constants, colours and sun gradient. Mission-console, blueprint, simulator, lessons, last-message, time-machine, quiz and certificate markup compares unchanged.
+`node tests/preservation.cjs` passes full JSX parsing and semantic equality of every original dataset, dictionary and feature component except the intentionally changed controller, canvas and mission roster; the canvas keeps its exact orbit constants, colours and sun gradient, changing only by the per-body label-colour hook. Mission-console, blueprint, simulator, lessons, last-message, time-machine, quiz and certificate markup compares unchanged.
 
 ## Selected craft view
 
-`tests/browser_craft.py` reaches a planet, opens Opportunity and confirms five telemetry rows (`تاريخ الإطلاق`, `آخر اتصال`, `العمر مقابل المخطط`, `المسافة`, `أهم اكتشاف`) with their values, the diary, three actions including `المحاكي`, the narration player, and a console that opens on `التفكيك`. It repeats the pass in English and at 390 × 844. The hero upgraded from a 640 px source to `PIA20285~orig.jpg` at 1024 px (Opportunity) and to `PIA23791~orig.jpg` at 2245 px on Mars, proving the `~large` → `~orig` fallback works where NASA blocks the large size. A craft without a recording shows the quiet "no recording" notice instead of failing, and no page errors were raised in any pass.
+`tests/browser_craft.py` reaches a planet, opens Opportunity and confirms five telemetry rows (`تاريخ الإطلاق`, `آخر اتصال`, `العمر مقابل المخطط`, `المسافة`, `أهم اكتشاف`) with their values, the diary, three actions including `المحاكي`, the narration player, and a console that opens on `التفكيك`. It repeats the pass in English and at 390 × 844. The hero upgraded from a 640 px source to `PIA20285~orig.jpg` at 1024 px, proving the `~large` → `~orig` fallback works where NASA blocks the large size. No page errors were raised in any pass.
 
-The console sheet previously failed to centre because its entrance animation reset the `-translate-x-1/2` it relied on; it now centres with auto margins. That one class change is the only edit inside the console.
+## New voice-overs, captions and rosters
+
+All four new recordings were mastered and measured: −15.8 to −16.1 LUFS, true peaks −1.5 to −2.8 dBTP, per-channel sample peaks ≤ 0.84, and phrase alignment within 0.06 ms after latency compensation. `python3 tests/voice_mastering.py` re-checks all of it and confirms the delivered MP3/OGG lengths match their masters.
+
+`node tests/voice_transcripts.cjs` asserts that the Arabic `diary` of Opportunity, Spirit and Lunokhod 1 is the exact spoken narration, that each English `enDiary` equals the concatenation of its measured caption rows, that the intro text and 15.68 s length match the new recording, that all four audio pairs exist and are real speech, and that the removed placeholder files are gone.
+
+`tests/browser_transcripts.py` runs Chromium against the real app and confirms: Mars lists exactly three crafts with one `القصة قريباً` badge; clicking InSight opens no HUD and instead shows the coming-soon card; Opportunity's HUD shows five facts and the Arabic script; the opt-in English transcript appears; the live caption at a sampled playback time equals the cue covering that time (no "awaiting" fallback); pause holds position and resume continues; mute propagates; English mode shows the English story; and the Moon lists only Lunokhod 1 with its own narration. `tests/captures/mars_roster.png` and `coming_soon.png` record the two new states.
+
+`node tests/intro_narration.cjs` and `tests/browser_narration.py` still pass: narration begins at video 11.85 s, score ducking engages, mid-film unmute does not restart the video, Skip cleans up, and the transcript stays reachable after the film.
 
 ## Known limits
 
-A browser autoplay policy can still start the film muted; the audio control and any first interaction unmute it. On narrow portrait viewports the film's final framing is larger than the canvas's compact system, so the dissolve reads as a settle rather than an exact pixel match. Scientific text, mission data and missing-recording fallbacks were intentionally left as supplied. Hero imagery is whatever NASA asset the app's own query or pinned id resolves to, so an occasional photograph is a detail shot rather than a full-portrait of the craft; the framing never crops it further.
+A browser autoplay policy can still start the film muted; the audio control and any first interaction unmute it. On narrow portrait viewports the film's final framing is larger than the canvas's compact system, so the dissolve reads as a settle rather than an exact pixel match. Hero imagery is whatever NASA asset the app's own query or pinned id resolves to, so an occasional photograph is a detail shot rather than a full-portrait of the craft; the framing never crops it further.
 
-## Arabic intro narration and English transcripts revision
+Two words were normalised from the recordings because both speech-to-text passes returned a non-word in those positions: `حاجة بتحجب الشمس` (Opportunity) and `يمكن عجلاتي وقفت` (Spirit). Everything else in the Arabic scripts is verbatim.
 
-The intro MP4 SHA-256 remains identical to the previous checkpoint. The first fully black frame was measured with FFmpeg `blackdetect` at 11.833333 s; five English cue windows come from the source Arabic word timestamps. `tests/browser_narration.py` observed the first audio `playing` event at video 11.849019 s, verifies ducked score volume, real-time translated phrases, video-relative seeking, muted-autoplay recovery with no video restart, Skip cleanup and transcript access after the film. It passes in 1600 × 900 audible-autoplay and 390 × 844 browser-blocked cases.
-
-`tests/intro_narration.cjs` passes pre-blackout silence, exact offset, seek alignment, score/shared ducking, mute restoration, late unmute and teardown. `tests/voice_transcripts.cjs` compares every one of the twelve transcript strings against a fixture extracted from the user's instructions. `tests/browser_transcripts.py` verifies all runtime `enDiary` fields, opt-in English text in AR, prominent EN diary text, real pause/resume (not restart), mute propagation and the configurable measured-cue hook.
-
-The preservation suite now normalizes only the output connection introduced for narration ducking and confirms that every original synth parameter is unchanged. The current `<Space />` function compares exactly to the pre-transcript checkpoint, all original craft framing CSS rules remain present, and the intro cross-dissolve browser suite still passes with zero page errors. Existing scientific fields, original Arabic text, Blueprint, Dust Simulator, Time Machine, Quiz and certificate logic are pinned.
-
-An independent read-only review identified the actual asset limitation: seven mission MP3 paths contain identical RIFF/WAVE PCM placeholders, while five recordings are missing. A single transcription confirms no spoken words in the shared placeholder; no mission timings can be validated from it. Correctly named WAV fallbacks were added without editing any original bytes. The full English text is readable for all twelve, while live fallback text clearly states that matched narration timing is pending. No estimated phrase timings are published.
+The earlier placeholder-audio limitation is resolved: real recordings now exist for the intro, Opportunity, Spirit and Lunokhod 1, and the unvoiced missions were removed from the rosters rather than left playable.
