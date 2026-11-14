@@ -6,7 +6,7 @@ const Babel = require('/tmp/fe_checks/babel.cjs');
 
 const files = process.argv.slice(2).length
   ? process.argv.slice(2)
-  : ['src/components/robot-companion.jsx', 'src/components/craft-media.jsx'];
+  : [];
 
 let bad = 0;
 for (const file of files) {

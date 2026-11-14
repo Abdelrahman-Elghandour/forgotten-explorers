@@ -84,16 +84,16 @@ async def main():
         ])
         offline = await page.evaluate("""() => ({
             slides: document.querySelectorAll('.craft-thumb').length,
-            canvas: !!document.querySelector('.robot-canvas canvas'),
+            caption: !!document.querySelector('.craft-caption'),
             credit: (document.querySelector('.craft-credit a') || {}).textContent || '',
         })""")
         check("bundled photographs keep the slideshow alive", offline["slides"] >= 4, str(offline))
-        check("3D companion renders from the local library", offline["canvas"], str(offline))
+        check("caption layer renders from bundled code", offline["caption"], str(offline))
         check("bundled slide carries a NASA credit", "NASA" in offline["credit"], offline["credit"])
         await page.close()
 
         # 5. The media component file itself fails to load.
-        page, state, errors = await open_opportunity(browser, "", [("**/craft-media.jsx", "abort")])
+        page, state, errors = await open_opportunity(browser, "", [("**/src/data/craft-gallery.js", "abort")])
         check("opens when the media component is missing", state["hud"] and state["body"] > 500, str(state))
         await page.close()
 

@@ -1,8 +1,8 @@
-"""Browser checks for the multi-media stage and the 3D companion.
+"""Browser checks for the multi-media stage and its closed captions.
 
 Verifies that the craft view shows several real NASA media items, that the slideshow and the
-filmstrip behave, that a mission video actually resolves and plays, and that the robot renders,
-rotates on drag, and speaks the transcript sentence that belongs to the current narration time.
+filmstrip behave, that a mission video actually resolves and plays, and that the English caption
+that belongs to the current narration moment is on screen and advances with the audio.
 """
 import asyncio
 import json
@@ -84,50 +84,30 @@ async def main():
         await page.screenshot(path=str(CAPTURES / "companion_video.png"))
         await page.evaluate("() => document.querySelector('.craft-frame video')?.pause()")
 
-        # --- 3D companion ------------------------------------------------------
-        has_gl = await page.evaluate("""() => { const c = document.querySelector('.robot-canvas canvas');
-            return !!c && !!(c.getContext('webgl2') || c.getContext('webgl')); }""")
-        check("3D robot renders with WebGL", has_gl)
+        # --- English closed captions ------------------------------------------
+        has_caption = await page.evaluate("() => !!document.querySelector('.craft-caption')")
+        check("caption layer present in the craft stage", has_caption)
 
-        canvas = page.locator(".robot-canvas canvas")
-        before = await canvas.screenshot()
-        box = await canvas.bounding_box()
-        await page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
-        await page.mouse.down()
-        await page.mouse.move(box["x"] + box["width"] / 2 + 55, box["y"] + box["height"] / 2 + 12, steps=8)
-        await page.mouse.up()
-        await page.wait_for_timeout(900)
-        after = await canvas.screenshot()
-        diff = sum(abs(a - b) for a, b in zip(before[::97], after[::97])) / max(1, len(before[::97]))
-        check("dragging rotates the 3D model", diff > 4, f"pixel delta {diff:.1f}")
+        await page.wait_for_function(
+            "() => document.querySelector('.craft-caption')?.dataset.present === '1'", timeout=30000)
+        first = await page.evaluate("() => document.querySelector('.craft-caption__line')?.textContent || ''")
+        label = await page.evaluate("() => document.querySelector('.craft-caption__label')?.textContent || ''")
+        check("captions appear while the story plays", bool(first), first[:60])
+        check("caption is labelled as the English translation", "EN" in label, label)
+        check("caption text is the supplied English translation", "NASA" in first or "I " in first or "my" in first, first[:80])
 
-        # --- live transcript ---------------------------------------------------
-        await page.wait_for_function("() => document.querySelector('.robot-bubble__line')", timeout=20000)
-        sentences = await page.evaluate("() => window.MISSION_SENTENCES.opp.map(s => s.text)")
-        seen = set()
-        for _ in range(9):
-            line = await page.evaluate("() => document.querySelector('.robot-bubble__line')?.textContent || ''")
-            if line:
-                seen.add(line)
-            await page.wait_for_timeout(1400)
-        check("bubble speaks the recorded English sentences",
-              bool(seen) and all(s in sentences for s in seen), f"{len(seen)} distinct lines")
-        check("bubble advances sentence by sentence", len(seen) >= 2, str(sorted(seen))[:120])
+        await page.wait_for_timeout(7000)
+        second = await page.evaluate("() => document.querySelector('.craft-caption__line')?.textContent || ''")
+        check("captions advance with the narration", bool(second) and second != first, (first[:35] + " -> " + second[:35]))
 
-        head = await page.evaluate("() => document.querySelector('.robot-bubble__who')?.textContent || ''")
-        check("bubble names the craft in English", "Opportunity" in head, head)
-
-        await page.screenshot(path=str(CAPTURES / "companion_live.png"))
-
-        # --- lunar craft uses the Lunokhod model -------------------------------
-        await page.click('header button:has-text("المجموعة الشمسية")')
-        await page.wait_for_timeout(1500)
-        await land(page, "لونوخود")
-        await open_craft(page, "لونوخود 1")
-        await page.wait_for_timeout(3000)
-        lun_gl = await page.evaluate("() => !!document.querySelector('.robot-canvas canvas')")
-        check("Lunokhod 1 builds its own 3D model", lun_gl)
-        await page.locator(".robot-host").screenshot(path=str(CAPTURES / "companion_lunokhod.png"))
+        paused = await page.evaluate("""async () => {
+            const btn = [...document.querySelectorAll('.craft-hud button')].find(b => /استمع|إيقاف/.test(b.textContent));
+            if (btn) btn.click();
+            await new Promise(r => setTimeout(r, 900));
+            return document.querySelector('.craft-caption')?.dataset.present;
+        }""")
+        check("caption keeps the paused line visible", paused == "1", str(paused))
+        await page.screenshot(path=str(CAPTURES / "craft_captions.png"))
 
         # --- mobile ------------------------------------------------------------
         mobile = await browser.new_page(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
@@ -142,12 +122,12 @@ async def main():
         await mobile.wait_for_selector(".craft-hud", timeout=8000)
         await mobile.wait_for_timeout(2500)
         fits = await mobile.evaluate("""() => {
-            const r = document.querySelector('.robot-host').getBoundingClientRect();
+            const r = document.querySelector('.craft-caption').getBoundingClientRect();
             const s = document.querySelector('.craft-strip-wrap').getBoundingClientRect();
-            return {ok: r.left >= -1 && r.right <= innerWidth + 1 && r.bottom <= s.top + 1,
+            return {ok: r.left >= -1 && r.right <= innerWidth + 1 && r.width > 200,
                     box: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)]};
         }""")
-        check("mobile companion stays inside the media area", fits["ok"], str(fits["box"]))
+        check("mobile caption fits the media area", fits["ok"], str(fits["box"]))
         await mobile.screenshot(path=str(CAPTURES / "companion_mobile.png"))
 
         check("no page errors", not errors, "; ".join(errors[:2]))

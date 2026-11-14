@@ -64,3 +64,12 @@ A browser autoplay policy can still start the film muted; the audio control and 
 Two words were normalised from the recordings because both speech-to-text passes returned a non-word in those positions: `حاجة بتحجب الشمس` (Opportunity) and `يمكن عجلاتي وقفت` (Spirit). Everything else in the Arabic scripts is verbatim.
 
 The earlier placeholder-audio limitation is resolved: real recordings now exist for the intro, Opportunity, Spirit and Lunokhod 1, and the unvoiced missions were removed from the rosters rather than left playable.
+
+## Local-file parity and captions
+The stage used to be a separate `text/babel src=…` file, which Babel cannot fetch when `index.html`
+is opened from disk, so a local run showed neither the slideshow nor the companion while Preview
+did. The component is now part of `index.html`; a `file://` load reaches Opportunity with six
+slides, the HUD and a live caption line, with no page errors. The 3D companion is gone: its Three.js
+module also could not load over `file://`, and the translation is better served by captions. The
+craft captions reuse the intro's measured cue data, so each line appears and clears with the Arabic
+audio, stays dimmed when paused, and clears on switching craft.

@@ -16,16 +16,9 @@
   <script src="./src/audio/narration-support.js"></script>
   <script src="./src/audio/intro-narration.js"></script>
   <script src="./src/components/CinematicIntro.js"></script>
-  <script type="module">
-    import * as THREE from "./src/vendor/three.module.min.js";
-    window.__THREE = THREE;
-    window.dispatchEvent(new Event("three-ready"));
-  </script>
   <script src="./src/data/craft-gallery.js"></script>
   <script src="./src/data/mission-sentences.js"></script>
   <script src="./src/data/voice-envelopes.js"></script>
-  <script type="text/babel" src="./src/components/robot-companion.jsx"></script>
-  <script type="text/babel" src="./src/components/craft-media.jsx"></script>
   <style>
     html, body, #root {
       margin: 0;
@@ -435,6 +428,295 @@ const CraftIcon = ({ c, on, im, real }) => {
   return <img src={src} alt="" referrerPolicy="no-referrer" onError={() => setBad((b) => b + 1)} className="object-cover rounded-full border-2" style={{ width: w, height: w, borderColor: c, boxShadow: `0 0 ${on ? 22 : 10}px ${c}`, transition: "all .7s" }} />;
 };
 const Eq = () => <span aria-hidden className="flex items-end gap-[3px] h-5">{[0, 1, 2, 3].map((i) => <i key={i} className="w-[3px] h-full rounded-full accbg" style={{ transformOrigin: "bottom", animation: `eq .${6 + i}s ease-in-out ${i * 0.1}s infinite` }} />)}</span>;
+/* ============ CRAFT MEDIA STAGE ============ */
+/* Multi-media stage for a selected craft.
+ *
+ * Replaces the single still with a carousel of real NASA photographs and mission footage from
+ * images-api.nasa.gov. Photos and videos are searched separately (the API takes one media_type
+ * per request), and a video's playable file is derived from its own asset path — the manifest
+ * JSON is not CORS-readable from the browser, so ~small/~mobile/~preview/~orig are tried in turn.
+ * A thumbnail filmstrip allows manual browsing, and the slideshow advances on its own until the
+ * visitor picks a slide or plays a video.
+ */
+(function () {
+  const React = window.React;
+  if (!React) return;
+  const { useCallback, useEffect, useMemo, useRef, useState } = React;
+  const h = React.createElement;
+
+  const CACHE = new Map();
+  const SEARCH = "https://images-api.nasa.gov/search";
+  const SLIDE_MS = 7000;
+  const VIDEO_SIZES = ["~small.mp4", "~mobile.mp4", "~preview.mp4", "~orig.mp4"];
+  const VIDEO_FALLBACK = { opp: "Mars rover", spi: "Mars rover", lun: "Luna 17" };
+
+  const withTimeout = (p, ms) => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), ms);
+    return p(ctrl.signal).finally(() => clearTimeout(timer));
+  };
+
+  const sized = (url, size) => (url || "").replace(/~(thumb|small|medium|large|orig)(?=\.)/, size);
+  const secure = (u) => (u || "").replace(/^http:\/\//i, "https://");
+
+  async function searchJson(q, media, size) {
+    const res = await withTimeout((signal) => fetch(
+      `${SEARCH}?q=${encodeURIComponent(q)}&media_type=${media}&page_size=${size}`, { signal }), 9000);
+    if (!res.ok) throw new Error("nasa " + res.status);
+    return res.json();
+  }
+
+  const itemsOf = (json) => (json && json.collection && json.collection.items) || [];
+
+  function toImage(it) {
+    const meta = (it.data && it.data[0]) || {};
+    const thumb = it.links && it.links[0] && it.links[0].href;
+    if (!thumb || !meta.nasa_id || meta.media_type !== "image") return null;
+    return {
+      kind: "image",
+      thumb: sized(secure(thumb), "~thumb"),
+      // NASA only generates ~medium/~large for some items; ~orig and ~thumb always exist.
+      src: sized(secure(thumb), "~orig"),
+      large: sized(secure(thumb), "~large"),
+      orig: sized(secure(thumb), "~orig"),
+      title: meta.title || "NASA",
+      nasaId: meta.nasa_id,
+    };
+  }
+
+  function toVideo(it) {
+    const meta = (it.data && it.data[0]) || {};
+    const thumb = it.links && it.links[0] && it.links[0].href;
+    if (!thumb || !meta.nasa_id || meta.media_type !== "video") return null;
+    const base = secure(thumb).replace(/~[a-z0-9_]+\.(jpe?g|png)$/i, "");
+    return {
+      kind: "video",
+      thumb: sized(secure(thumb), "~thumb"),
+      poster: secure(thumb),
+      sources: VIDEO_SIZES.map((s) => base + s),
+      title: meta.title || "NASA",
+      nasaId: meta.nasa_id,
+    };
+  }
+
+  async function fetchMedia(query, seed, id) {
+    if (CACHE.has(query)) return CACHE.get(query);
+    const build = async () => {
+      const images = searchJson(query, "image", 14)
+        .then((j) => itemsOf(j).map(toImage).filter(Boolean))
+        .catch(() => []);
+      const videos = searchJson(query, "video", 8)
+        .then((j) => itemsOf(j).map(toVideo).filter(Boolean))
+        .catch(() => [])
+        .then(async (list) => {
+          if (list.length) return list;
+          const j = await searchJson(VIDEO_FALLBACK[id] || "NASA mission", "video", 8).catch(() => null);
+          return j ? itemsOf(j).map(toVideo).filter(Boolean) : [];
+        });
+      const [imgs, vids] = await Promise.all([images, videos]);
+      const out = [];
+      const left = vids.slice(0, 3);
+      imgs.slice(0, 5).forEach((im, i) => {
+        out.push(im);
+        if (i === 1 || i === 3) { const v = left.shift(); if (v) out.push(v); }
+      });
+      left.forEach((v) => out.push(v));
+      return out.filter((x) => x.nasaId !== seed.nasaId).slice(0, 8);
+    };
+    const promise = build().catch(() => []);
+    CACHE.set(query, promise);
+    return promise;
+  }
+
+  function CraftMedia({ id, mission, im, query, en, onCredit, accent }) {
+    const seed = useMemo(() => ({
+      kind: "image",
+      thumb: im && (im.u || im.f),
+      src: im && (im.u || im.f),
+      large: im && im.f ? sized(im.f, "~large") : null,
+      orig: im && im.f ? sized(im.f, "~orig") : null,
+      title: (im && (im.ft || im.t)) || mission.n,
+      nasaId: (im && im.fi) || null,
+    }), [im && im.u, im && im.f, mission.id]);
+
+    // Bundled photographs guarantee a real slideshow even with no network.
+    const localList = useMemo(() => {
+      const bundled = ((window.CRAFT_GALLERY || {})[id] || []).map((g) => ({
+        kind: "image",
+        thumb: g.src,
+        src: g.src,
+        large: g.src,
+        title: g.title || mission.n,
+        nasaId: g.nasaId,
+      })).filter((g) => g.nasaId !== (seed && seed.nasaId));
+      // The bundled NASA set is sharper and credited, so it leads; the pinned still is the fallback.
+      if (bundled.length) return bundled;
+      return seed && seed.src ? [seed] : [seed];
+    }, [id, seed]);
+
+    const [items, setItems] = useState(localList);
+    const [idx, setIdx] = useState(0);
+    const [auto, setAuto] = useState(true);
+    const [hi, setHi] = useState(0);
+    const [loaded, setLoaded] = useState(false);
+    const [gone, setGone] = useState(false);
+    const [vTry, setVTry] = useState(0);
+    const [vDead, setVDead] = useState(false);
+    const videoRef = useRef(null);
+    const stripRef = useRef(null);
+
+    useEffect(() => {
+      let dead = false;
+      setItems(localList); setIdx(0); setAuto(true); setHi(0); setLoaded(false); setGone(false);
+      fetchMedia(query, seed, id).then((more) => {
+        if (dead) return;
+        // Live results extend the bundled set: two mission videos, then extra photographs.
+        const next = localList.slice();
+        const vids = more.filter((m) => m.kind === "video").slice(0, 2);
+        const imgs = more.filter((m) => m.kind === "image");
+        if (vids[0]) next.splice(Math.min(2, next.length), 0, vids[0]);
+        if (vids[1]) next.splice(Math.min(5, next.length), 0, vids[1]);
+        imgs.forEach((im) => {
+          if (next.length >= 8) return;
+          if (!next.some((x) => x.nasaId === im.nasaId)) next.push(im);
+        });
+        setItems(next);
+      });
+      return () => { dead = true; };
+    }, [id, query, seed, localList]);
+
+    const item = items[Math.min(idx, items.length - 1)] || seed;
+
+    useEffect(() => { setHi(0); setLoaded(false); setGone(false); setVTry(0); setVDead(false); }, [idx, item.src]);
+
+    // Full resolution first, then the smaller sizes if an item lacks it.
+    const chain = item.kind === "image"
+      ? [...new Set([item.src, item.large, item.thumb].filter(Boolean))]
+      : [];
+    const src = chain[Math.min(hi, chain.length - 1)];
+
+    useEffect(() => {
+      if (onCredit) onCredit({ t: item.title, i: item.nasaId });
+    }, [item.title, item.nasaId]);
+
+    const stopAuto = useCallback(() => setAuto(false), []);
+    const go = useCallback((next) => {
+      stopAuto();
+      setIdx(((next % items.length) + items.length) % items.length);
+    }, [items.length, stopAuto]);
+
+    // Slideshow: advance on a timer, never autoplaying a video.
+    useEffect(() => {
+      if (!auto || items.length < 2 || item.kind === "video") return undefined;
+      const t = setTimeout(() => {
+        let n = idx;
+        for (let i = 0; i < items.length; i += 1) {
+          n = (n + 1) % items.length;
+          if (items[n].kind === "image") break;
+        }
+        setIdx(n);
+      }, SLIDE_MS);
+      return () => clearTimeout(t);
+    }, [auto, idx, items, item.kind]);
+
+    useEffect(() => {
+      const onHide = () => { if (document.hidden) setAuto(false); };
+      document.addEventListener("visibilitychange", onHide);
+      return () => document.removeEventListener("visibilitychange", onHide);
+    }, []);
+
+    useEffect(() => {
+      const strip = stripRef.current;
+      const active = strip && strip.querySelector('[data-active="1"]');
+      if (active && active.scrollIntoView) active.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+    }, [idx]);
+
+    const videoSrc = item.kind === "video" && !vDead ? item.sources[Math.min(vTry, item.sources.length - 1)] : null;
+    const credit = { t: item.title, i: item.nasaId };
+
+    return h("div", { className: "craft-media__inner", onPointerDown: (e) => e.stopPropagation() },
+      item.kind === "video"
+        ? h("div", { className: "craft-frame" },
+            videoSrc
+              ? h("video", {
+                  key: videoSrc,
+                  ref: videoRef,
+                  className: "craft-hero craft-hero--video on",
+                  src: videoSrc,
+                  poster: item.poster,
+                  controls: true,
+                  playsInline: true,
+                  preload: "metadata",
+                  onPlay: stopAuto,
+                  onError: () => {
+                    if (vTry + 1 < item.sources.length) setVTry(vTry + 1);
+                    else setVDead(true);
+                  },
+                  "aria-label": item.title,
+                })
+              : h("div", { className: "craft-video-wait" },
+                  h("span", null, "NASA"),
+                  h("small", null, en ? "This recording is not available right now." : "هذا التسجيل غير متاح الآن.")))
+        : src && !gone
+          ? h("div", { className: "craft-frame" },
+              h("img", {
+                className: "craft-hero craft-hero--blur",
+                src: item.thumb,
+                alt: "",
+                "aria-hidden": "true",
+                referrerPolicy: "no-referrer",
+              }),
+              h("img", {
+                key: src,
+                src,
+                alt: credit.t || mission.n,
+                referrerPolicy: "no-referrer",
+                decoding: "async",
+                className: "craft-hero" + (loaded ? " on" : ""),
+                onLoad: () => setLoaded(true),
+                onError: () => { if (hi + 1 < chain.length) setHi(hi + 1); else setGone(true); },
+              }))
+          : h("p", { className: "craft-empty" }, en ? "No photograph for this craft yet." : "لا توجد صورة لهذه المركبة بعد."),
+
+      items.length > 1 && h(React.Fragment, null,
+        h("button", { className: "craft-nav prev", onClick: () => go(idx - 1), "aria-label": en ? "Previous media" : "السابق" }, "‹"),
+        h("button", { className: "craft-nav next", onClick: () => go(idx + 1), "aria-label": en ? "Next media" : "التالي" }, "›")
+      ),
+
+      h("div", { className: "craft-credit", dir: "ltr" },
+        credit.i
+          ? h("a", { href: `https://images.nasa.gov/details/${credit.i}`, target: "_blank", rel: "noreferrer" }, "NASA · " + credit.t)
+          : h("span", null, "NASA / JPL"),
+        h("span", { className: "craft-credit__count" }, `${idx + 1}/${items.length}`)
+      ),
+
+      h("div", { className: "craft-strip-wrap" },
+        h("button", {
+          className: "craft-strip__play" + (auto ? " on" : ""),
+          onClick: () => { setAuto((v) => !v); if (videoRef.current) videoRef.current.pause(); },
+          "aria-label": auto ? (en ? "Pause slideshow" : "إيقاف العرض") : (en ? "Play slideshow" : "تشغيل العرض"),
+          title: auto ? "Slideshow on" : "Slideshow paused",
+        }, auto ? "❚❚" : "▶"),
+        h("div", { className: "craft-strip", ref: stripRef, dir: "ltr" },
+          items.map((it, i) => h("button", {
+            key: it.nasaId + "-" + i,
+            className: "craft-thumb" + (i === idx ? " on" : ""),
+            "data-active": i === idx ? "1" : "0",
+            onClick: () => go(i),
+            "aria-label": it.title,
+            title: it.title,
+          },
+            h("img", { src: it.thumb, alt: "", referrerPolicy: "no-referrer", loading: "lazy" }),
+            it.kind === "video" && h("span", { className: "craft-thumb__badge" }, "▶")
+          ))
+        )
+      )
+    );
+  }
+
+  window.CraftMedia = CraftMedia;
+})();
+
 // Optional layers (NASA media, 3D scene) must never be able to take the app down with them.
 class SlotBoundary extends React.Component {
   constructor(props) { super(props); this.state = { failed: false }; }
@@ -458,6 +740,12 @@ function Surface({ B, name, list, nm, tg, en, onOpen, onLocked, play, imgs, onUp
   const fm = list.find((m) => m.id === focus);
   const im = fm ? imgs[fm.id] : null;
   const live = !!fm && speaking && voiceId === fm.id;
+  // Captions use the same measured cue data as the intro, so they follow the audio exactly.
+  const craftCue = fm && voiceId === fm.id && voiceCue && voiceCue.text ? voiceCue : null;
+  // Keep the last spoken line on screen while paused; clear it when another craft opens.
+  const cueHold = React.useRef({ id: null, cue: null });
+  if (craftCue) cueHold.current = { id: fm.id, cue: craftCue };
+  const shownCue = craftCue || (fm && cueHold.current.id === fm.id ? cueHold.current.cue : null);
   const [credit, setCredit] = useState({ t: im && im.t, i: im && im.i });
   const compact = useCompact();
   useEffect(() => { setCredit({ t: im && im.t, i: im && im.i }); }, [im && im.u]);
@@ -494,9 +782,12 @@ function Surface({ B, name, list, nm, tg, en, onOpen, onLocked, play, imgs, onUp
                 : plate ? <img className="craft-hero on" src={plate} alt={credit.t || nm(fm)} referrerPolicy="no-referrer" /> : null}
             </SlotBoundary>
             <div className="craft-mask" />
-            <SlotBoundary>
-              {window.RobotCompanion ? <RobotCompanion mission={fm} en={en} speaking={live} time={voiceTime} compact={compact} label={en ? fm.n : (EN[fm.id] || [fm.n])[0]} /> : null}
-            </SlotBoundary>
+            <div className="craft-caption voice-caption" dir="ltr" lang="en" aria-live="off" data-present={shownCue ? "1" : "0"} data-speaking={craftCue ? "1" : "0"}>
+              {shownCue ? <React.Fragment>
+                <span className="craft-caption__label">EN · {(EN[fm.id] || [fm.n])[0]}</span>
+                <span className="craft-caption__line">{shownCue.text}</span>
+              </React.Fragment> : <span className="craft-caption__idle">{en ? "Captions appear as the story plays." : "تظهر الترجمة مع بدء السرد."}</span>}
+            </div>
           </div>
 
           <aside className="craft-hud" dir={en ? "ltr" : "rtl"} onPointerDown={(e) => e.stopPropagation()} aria-label={nm(fm)}>
@@ -797,39 +1088,19 @@ function ForgottenExplorers() {
         .craft-strip__play.on{background:var(--c);color:#05070d;border-color:transparent}
         .craft-video-wait{position:absolute;inset:0;display:grid;place-content:center;gap:6px;text-align:center;color:#cfe0f5;font-size:12px}
         .craft-hero--video{object-fit:contain;background:#000;animation:none}
-        /* ---- 3D robot companion ---- */
-        .robot-host{position:absolute;left:6px;bottom:136px;z-index:8;display:flex;align-items:flex-end;gap:2px;max-width:min(600px,calc(100% - 20px));pointer-events:auto}
-        .robot-host::before{content:"";position:absolute;left:14px;bottom:6px;width:190px;height:44px;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.62),rgba(0,0,0,.28) 55%,transparent);filter:blur(8px);z-index:-1}
-        .robot-canvas{width:236px;height:252px;opacity:0;transition:opacity .7s;cursor:grab;touch-action:none;filter:drop-shadow(0 20px 28px rgba(0,0,0,.6))}
-        .robot-canvas.on{opacity:1}
-        .robot-canvas.grabbing{cursor:grabbing}
-        .robot-bubble{position:relative;margin-bottom:26px;max-width:min(330px,44vw);padding:10px 13px 11px;border-radius:16px;background:rgba(10,16,30,.72);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(18px) saturate(1.2);box-shadow:0 18px 44px rgba(0,0,0,.55);transition:border-color .4s,box-shadow .4s}
-        .robot-bubble::after{content:"";position:absolute;left:-6px;bottom:14px;width:12px;height:12px;background:inherit;border-left:1px solid rgba(255,255,255,.16);border-bottom:1px solid rgba(255,255,255,.16);transform:rotate(45deg);border-radius:0 0 0 3px}
-        .robot-bubble.live{border-color:rgba(139,211,255,.42);box-shadow:0 18px 44px rgba(0,0,0,.55),0 0 30px rgba(139,211,255,.14)}
-        .robot-bubble__head{display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(168,198,232,.8)}
-        .robot-bubble__dot{width:6px;height:6px;border-radius:50%;background:#8bd3ff;box-shadow:0 0 8px #8bd3ff;animation:pulse 2.4s ease-in-out infinite}
-        .robot-bubble.live .robot-bubble__dot{animation-duration:1.1s}
-        @keyframes pulse{0%,100%{opacity:.45;transform:scale(.85)}50%{opacity:1;transform:scale(1.15)}}
-        .robot-bubble__who{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#cfe6ff}
-        .robot-bubble__mode{flex:0 0 auto;opacity:.55;letter-spacing:.06em}
-        .robot-bubble__line{margin:0;font-size:13px;line-height:1.62;font-weight:700;color:#f4faff}
-        .robot-bubble__idle{margin:0;font-size:12.5px;line-height:1.6;color:rgba(206,226,248,.78)}
-        .robot-bubble__bar{height:2px;border-radius:2px;background:rgba(255,255,255,.14);margin:7px 0 6px;overflow:hidden}
-        .robot-bubble__bar i{display:block;height:100%;background:var(--c);transition:width .28s linear}
-        .robot-bubble__next{margin:0;font-size:10.5px;line-height:1.5;color:rgba(186,212,240,.5);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+        /* ---- closed captions for the craft narration (mirrors the intro) ---- */
+        .craft-caption{position:absolute;left:50%;transform:translateX(-50%);bottom:134px;z-index:9;width:min(760px,calc(100% - 120px));padding:11px 16px 12px;border-radius:14px;background:rgba(5,7,13,.72);border:1px solid rgba(139,211,255,.18);backdrop-filter:blur(16px) saturate(1.15);box-shadow:0 16px 40px rgba(0,0,0,.5);text-align:center;pointer-events:none;opacity:0;transition:opacity .35s ease}
+        .craft-caption[data-present="1"]{opacity:1}
+        .craft-caption[data-speaking="0"]{opacity:.72}
+        .craft-caption__label{display:block;margin-bottom:5px;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:rgba(150,187,216,.85);font-weight:800}
+        .craft-caption__line{display:block;font-size:clamp(13px,1.15vw,17px);line-height:1.5;font-weight:600;color:#f5f8fc;text-shadow:0 2px 6px rgba(0,0,0,.8)}
+        .craft-caption__idle{display:block;font-size:12px;color:rgba(196,216,236,.6)}
         @media(max-width:1023px){
-          .robot-host{left:0;bottom:82px;flex-direction:column;align-items:flex-start;gap:0}
-          .robot-canvas{width:98px;height:112px}
-          .robot-bubble{order:-1;max-width:min(76vw,268px);margin:0 0 0 10px;padding:6px 9px}
-          .robot-bubble::after{left:22px;bottom:-6px;top:auto;border:0;border-right:1px solid rgba(255,255,255,.16);border-bottom:1px solid rgba(255,255,255,.16)}
-          .robot-bubble__line{font-size:10.5px;line-height:1.45}
-          .robot-bubble__next{display:none}
-          .robot-bubble__head{font-size:8px;margin-bottom:3px}
-          .craft-credit{top:auto;bottom:74px;left:auto;right:8px;font-size:9px;padding:4px 8px;gap:6px;max-width:42%}
-          .craft-credit a{max-width:120px}
-          .craft-strip-wrap{bottom:6px}
-          .craft-nav.prev{left:8px}.craft-nav.next{right:8px}}
-        @media(prefers-reduced-motion:reduce){.robot-bubble__dot{animation:none}.robot-canvas{transition:none}}
+          .craft-caption{bottom:92px;width:calc(100% - 24px);padding:8px 11px 9px;border-radius:12px}
+          .craft-caption__line{font-size:11.5px;line-height:1.45}
+          .craft-caption__label{font-size:8px;margin-bottom:3px}
+        }
+        @media(prefers-reduced-motion:reduce){.craft-caption{transition:none}}
         .fin{animation:fin 1s both} @media (prefers-reduced-motion:reduce){*{animation:none!important}}`}</style>
 
       <div inert={introVisible && !introHandoff ? "" : undefined} aria-hidden={introVisible && !introHandoff ? true : undefined}>

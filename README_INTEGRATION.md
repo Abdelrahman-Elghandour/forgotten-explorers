@@ -44,55 +44,33 @@ The package's previous `index.html` was a different, simplified immersive Moon/M
 
 Babel Standalone is pinned to 7.26.4 in both HTML entry points. The unpinned CDN now serves Babel 8, whose `react` preset emits `import … from "react/jsx-runtime"` and breaks this UMD build; the pin is what makes the supplied app load at all.
 
-## Multi-media stage and the 3D companion
+## Multi-media stage and closed captions
 
-The selected craft no longer opens on one still photograph. `src/components/craft-media.jsx`
-builds a slideshow of real NASA media for that craft: six photographs and up to three mission
-videos, searched through `images-api.nasa.gov` with one request per `media_type` (the API accepts
-a single type at a time). NASA only guarantees `~orig` and `~thumb` for every item, so the sharp
-frame is `~orig` with `~large` and `~thumb` fallbacks, and a blurred thumbnail is painted beneath
-it while the full file downloads. Video files are derived from each item's own asset path
-(`~small.mp4`, `~mobile.mp4`, `~preview.mp4`, `~orig.mp4`, tried in order) because the asset
-manifest is not readable cross-origin.
+The selected craft opens on a slideshow of real NASA media: four photographs bundled with the
+project lead, and when `images-api.nasa.gov` answers, up to two mission videos and extra
+photographs are folded in (eight slides at most). Photographs request `~orig` with `~large` and
+`~thumb` fallbacks over a blurred thumbnail placeholder; video files are derived from each item's
+own asset path (`~small`, `~mobile`, `~preview`, `~orig`) because the asset manifest is not
+readable cross-origin. The strip advances every seven seconds, pauses the moment a visitor picks a
+slide or plays a video, and can be restarted from the toggle beside the filmstrip.
 
-The slideshow advances every seven seconds, pauses permanently the moment a visitor picks a
-slide or plays a video, and can be restarted with the ▶ toggle beside the filmstrip. The strip
-itself scrolls to the active thumbnail, and each video slide carries a ▶ badge. On a slide change
-the HUD's credit line follows the new NASA title and id.
+The narration's English translation is shown as closed captions over the stage — the same measured
+cue data the intro uses, so a line appears and clears exactly with the Arabic audio. The last line
+stays dimmed in place while paused and is cleared when another craft opens.
 
-`src/components/robot-companion.jsx` adds a small Three.js scene in the corner of the media area:
-Opportunity and Spirit are built as six-wheeled MER rovers (solar decks, mast camera, high-gain
-antenna), Lunokhod 1 as an eight-wheeled tub with its hinged lid. The model can be dragged to
-inspect it, and while the narration plays its optics and mast follow the recording's own loudness
-envelope (`src/data/voice-envelopes.js`) rather than a decorative loop. Beside it, a glass bubble
-shows the English transcript sentence by sentence, highlighting the sentence whose measured
-window contains the current playback time (`src/data/mission-sentences.js`).
-
-Both data files are generated from the recordings and the existing cue tables:
+Nothing is fetched as a component file any more: the stage lives inside `index.html`, so opening
+the project from disk (`file://`) behaves exactly like the served Preview, and the photographs and
+`src/data/craft-gallery.js` ship with the project.
 
 ```bash
-python3 tools/build_companion_data.py
-```
-
-### Bundled so it always appears
-The stage no longer depends on the network being open. `tools/fetch_craft_gallery.py` downloads
-four real NASA photographs per craft into `images/craft/` and writes `src/data/craft-gallery.js`,
-so the slideshow and filmstrip are present even when `images-api.nasa.gov` is unreachable; live
-results and mission footage are appended when it is. Three.js is vendored at
-`src/vendor/three.module.min.js` instead of being imported from a CDN, so the companion renders on
-networks or embeddings that block third-party hosts. To refresh the bundled set:
-
-```bash
-python3 tools/fetch_craft_gallery.py
+python3 tools/fetch_craft_gallery.py   # refresh the bundled NASA photograph set
 ```
 
 ## Files
 
-* `src/components/craft-media.jsx` — NASA photo/video slideshow, filmstrip, credits, autoplay.
-* `src/components/robot-companion.jsx` — Three.js craft model, drag rotation, live transcript bubble.
-* `src/data/mission-sentences.js`, `src/data/voice-envelopes.js` — generated companion data.
-* `tools/build_companion_data.py` — regenerates both from the narration.
-* `tests/browser_companion.py`, `tests/jsx_check.cjs` — browser and syntax checks for the above.
+* `src/data/craft-gallery.js`, `images/craft/` — bundled NASA photographs (generated).
+* `tools/fetch_craft_gallery.py` — refreshes that set from the NASA library.
+* `tests/browser_companion.py` — slideshow, video and caption behaviour in a real browser.
 
 `src/components/CinematicIntro.js` and `cinematic-intro.css` own the opening layer. `index.html` wires the freeze, the handoff and the gesture-gated audio. `serve.py` keeps the local launcher with a configurable port and MP4 byte-range support. `build_static.py` writes `dist/` for static hosting.
 
