@@ -197,6 +197,8 @@
       if (!ready || !host.current) return undefined;
       const THREE = window.__THREE;
       if (!THREE) return undefined;
+      const el = host.current;
+      if (!el) return undefined;
       let renderer;
       try {
         renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "low-power" });
@@ -204,7 +206,9 @@
         setFailed(true);
         return undefined;
       }
-      const el = host.current;
+      // The scene is optional decoration: any failure must degrade to the static fallback
+      // instead of throwing out of the effect (which would unmount the whole application).
+      try {
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.setClearColor(0x000000, 0);
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -276,8 +280,14 @@
         camera.position.set(dir.x, dir.y + centre.y * 0.92, dir.z);
         camera.lookAt(0, centre.y * 0.92, 0);
       };
-      const ro = new ResizeObserver(resize);
-      ro.observe(el);
+      // ResizeObserver is missing in some embedded/older browsers.
+      let ro = null;
+      if (typeof ResizeObserver !== "undefined") {
+        ro = new ResizeObserver(resize);
+        ro.observe(el);
+      } else {
+        window.addEventListener("resize", resize);
+      }
       resize();
 
       const clock = new THREE.Clock();
@@ -309,7 +319,7 @@
       return () => {
         alive = false;
         cancelAnimationFrame(raf);
-        ro.disconnect();
+        if (ro) ro.disconnect(); else window.removeEventListener("resize", resize);
         el.removeEventListener("pointerdown", onDown);
         el.removeEventListener("pointermove", onMove);
         el.removeEventListener("pointerup", onUp);
@@ -322,6 +332,11 @@
         renderer.dispose();
         if (renderer.domElement.parentNode === el) el.removeChild(renderer.domElement);
       };
+      } catch (err) {
+        setFailed(true);
+        try { renderer.dispose(); } catch (e) {}
+        return undefined;
+      }
     }, [ready, id, accent]);
 
     if (failed) return h("div", { className: "robot-canvas robot-canvas--flat", "aria-hidden": "true" });

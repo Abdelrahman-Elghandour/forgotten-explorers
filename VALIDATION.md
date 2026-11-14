@@ -42,6 +42,18 @@ pins every original module and the whole surface/canvas code, and now also check
 and companion contracts. `tests/browser_craft.py`, `browser_seam.py`, `browser_narration.py` and
 `browser_transcripts.py` continue to pass.
 
+## Rover views must never fail closed
+A missing `ResizeObserver` (older or embedded browsers) previously threw inside the 3D companion's
+effect, which unmounted the whole React tree: every rover then appeared "not opening". The scene
+is now optional by construction — its setup is wrapped in `try/catch`, `ResizeObserver` falls back
+to a window resize listener, and a failed scene renders a static placeholder. `CraftMedia` and
+`RobotCompanion` each sit inside a `SlotBoundary` whose fallback is the craft's still photograph,
+the globals are checked before use, and the app root has a last-resort recovery card instead of a
+blank page.
+`tests/browser_resilience.py` reproduces each case and passes: no `ResizeObserver`, the Three.js
+CDN blocked, the NASA image API offline, and the media component file failing to load — the HUD,
+the facts and a photograph are present every time, with no page errors.
+
 ## Known limits
 
 A browser autoplay policy can still start the film muted; the audio control and any first interaction unmute it. On narrow portrait viewports the film's final framing is larger than the canvas's compact system, so the dissolve reads as a settle rather than an exact pixel match. Hero imagery is whatever NASA asset the app's own query or pinned id resolves to, so an occasional photograph is a detail shot rather than a full-portrait of the craft; the framing never crops it further.

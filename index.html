@@ -434,6 +434,13 @@ const CraftIcon = ({ c, on, im, real }) => {
   return <img src={src} alt="" referrerPolicy="no-referrer" onError={() => setBad((b) => b + 1)} className="object-cover rounded-full border-2" style={{ width: w, height: w, borderColor: c, boxShadow: `0 0 ${on ? 22 : 10}px ${c}`, transition: "all .7s" }} />;
 };
 const Eq = () => <span aria-hidden className="flex items-end gap-[3px] h-5">{[0, 1, 2, 3].map((i) => <i key={i} className="w-[3px] h-full rounded-full accbg" style={{ transformOrigin: "bottom", animation: `eq .${6 + i}s ease-in-out ${i * 0.1}s infinite` }} />)}</span>;
+// Optional layers (NASA media, 3D scene) must never be able to take the app down with them.
+class SlotBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { failed: false }; }
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch() {}
+  render() { return this.state.failed ? (this.props.fallback || null) : this.props.children; }
+}
 const useCompact = () => {
   const [c, setC] = useState(() => typeof window !== "undefined" && window.innerWidth < 1024);
   useEffect(() => { const on = () => setC(window.innerWidth < 1024); window.addEventListener("resize", on); return () => window.removeEventListener("resize", on); }, []);
@@ -480,9 +487,15 @@ function Surface({ B, name, list, nm, tg, en, onOpen, onLocked, play, imgs, onUp
           <div className="craft-media">
             {plate && <div className="craft-plate" style={{ backgroundImage: `url("${plate}")` }} />}
             <div className="craft-halo" style={{ background: `radial-gradient(closest-side, ${B.c}44, rgba(255,196,132,.16) 52%, transparent 78%)` }} />
-            <CraftMedia id={fm.id} mission={fm} im={im} query={IMGQ[fm.id]} en={en} accent={B.c} onCredit={setCredit} />
+            <SlotBoundary fallback={plate ? <img className="craft-hero on" src={plate} alt={credit.t || nm(fm)} referrerPolicy="no-referrer" /> : null}>
+              {window.CraftMedia
+                ? <CraftMedia id={fm.id} mission={fm} im={im} query={IMGQ[fm.id]} en={en} accent={B.c} onCredit={setCredit} />
+                : plate ? <img className="craft-hero on" src={plate} alt={credit.t || nm(fm)} referrerPolicy="no-referrer" /> : null}
+            </SlotBoundary>
             <div className="craft-mask" />
-            <RobotCompanion mission={fm} en={en} speaking={live} time={voiceTime} compact={compact} label={en ? fm.n : EN[fm.id][0]} />
+            <SlotBoundary>
+              {window.RobotCompanion ? <RobotCompanion mission={fm} en={en} speaking={live} time={voiceTime} compact={compact} label={en ? fm.n : (EN[fm.id] || [fm.n])[0]} /> : null}
+            </SlotBoundary>
           </div>
 
           <aside className="craft-hud" dir={en ? "ltr" : "rtl"} onPointerDown={(e) => e.stopPropagation()} aria-label={nm(fm)}>
@@ -955,7 +968,23 @@ function ForgottenExplorers() {
 }
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<ForgottenExplorers />);
+// Last resort: a render failure shows a recovery card instead of a silent blank screen.
+class AppBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { failed: false }; }
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch() {}
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <div dir="rtl" style={{ position: "fixed", inset: 0, display: "grid", placeContent: "center", gap: 14, textAlign: "center", padding: 24, background: "#05070d", color: "#e8f0fe", fontFamily: "'Tajawal','Segoe UI',sans-serif" }}>
+        <p style={{ fontSize: 18, fontWeight: 800 }}>تعذّر عرض هذه الشاشة.</p>
+        <p style={{ fontSize: 13, color: "#9db4d0" }}>This screen could not be displayed. Nothing else was affected.</p>
+        <button onClick={() => window.location.reload()} style={{ justifySelf: "center", padding: "10px 20px", borderRadius: 999, background: "#8bd3ff", color: "#05070d", fontWeight: 800 }}>إعادة التحميل / Reload</button>
+      </div>
+    );
+  }
+}
+root.render(<AppBoundary><ForgottenExplorers /></AppBoundary>);
 
   </script>
 </body>
