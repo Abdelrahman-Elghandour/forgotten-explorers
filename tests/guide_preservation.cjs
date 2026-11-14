@@ -1,0 +1,28 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+const Babel = require(process.env.BABEL_CHECKER || '/tmp/fe_checks/babel.cjs');
+const root = path.resolve(__dirname, '..');
+const read = name => fs.readFileSync(path.join(root, name), 'utf8');
+const html = read('index.html');
+const baseline = read('tests/fixtures/pre-2d-guide.html');
+const inline = text => text.match(/<script type="text\/babel"(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/)[1];
+const clean = node => JSON.stringify(node, (key, value) => ['loc','start','end','extra','leadingComments','trailingComments','innerComments'].includes(key) ? undefined : value);
+const parse = text => Babel.transform(inline(text), {presets:['react'], ast:true, code:false}).ast.program;
+const functions = text => new Map(parse(text).body.filter(n => n.type === 'FunctionDeclaration').map(n => [n.id.name,clean(n)]));
+const expected = JSON.parse(read('tests/fixtures/guide-stable-functions.json'));
+const actual = functions(html);
+for (const [name, body] of Object.entries(expected)) assert.equal(actual.get(name), body, 'existing feature function changed: '+name);
+const media = text => text.slice(text.indexOf('/* ============ CRAFT MEDIA STAGE ============ */'),text.indexOf('// Optional layers'));
+// The new guide is inserted after the old media source and before SlotBoundary.
+const marker = '/* ============ INLINE 2D MISSION GUIDE ============ */';
+assert(html.includes(marker), '2D guide must be in the same inline app');
+assert.equal(media(html).split(marker)[0].trim(),media(baseline).trim(), 'NASA slideshow source changed');
+assert(!/<script[^>]*type="text\/babel"[^>]*\bsrc=/.test(html), 'file:// cannot fetch external Babel components');
+assert(!/WebGLRenderer|THREE\.|ResizeObserver/.test(inline(html)), '2D guide must not depend on WebGL or ResizeObserver');
+const guide = html.slice(html.indexOf(marker),html.indexOf('class SlotBoundary'));
+assert(!/new Audio|speechSynthesis|\.fetch\(/.test(guide), 'guide must reuse existing voice callbacks');
+assert(/VOICE_ENVELOPES/.test(guide) && /onToggle/.test(guide) && /onReplay/.test(guide), 'guide playback/speech hooks');
+assert(/data-guide-fallback/.test(guide), 'inline fallback survives illustration failure');
+assert(/closedCaptionsOn/.test(html) && /pausedHere/.test(html) && /craft-cc-control/.test(html), 'independent captions toggle and gap/pause handling');
+console.log('PASS: current slideshow and feature helpers preserved; 2D guide inline; real-voice callbacks; fallback and independent captions.');

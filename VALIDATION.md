@@ -73,3 +73,13 @@ slides, the HUD and a live caption line, with no page errors. The 3D companion i
 module also could not load over `file://`, and the translation is better served by captions. The
 craft captions reuse the intro's measured cue data, so each line appears and clears with the Arabic
 audio, stays dimmed when paused, and clears on switching craft.
+
+## Reliable 2D guide — current version
+
+The old WebGL companion is superseded by an original illustrated 2D guide in the same inline app. `images/mission-guide.webp` is bundled, and a self-contained SVG fallback remains visible if it cannot load. No Three.js, external Babel component request, WebGL context or ResizeObserver is required.
+
+`tests/browser_2d_guide.py` opens the complete app through `file://`, with NASA media endpoints and the former CDN blocked. Opportunity, Spirit and Lunokhod 1 each retain four bundled slideshow photographs and a working guide. The actual narration play/pause/resume/replay controls, independent CC toggle, hide/reopen state, failed-illustration fallback and reduced motion all pass. Companion and caption rectangles do not intersect at 390×844 or 390×667. The independent review's confirmed short-phone overlap was corrected with a compact side-by-side layout.
+
+`tests/browser_guide_lifecycle.py` observes real HTMLAudioElement instances rather than mocking playback. An Unmute-and-listen click preserves the already-playing recording; silent measured cue gaps actually hide the subtitle; completion clears it; and replay leaves exactly one active recording. `tests/browser_companion.py` still passes the NASA slideshow, arrows, manual pause, playable video, and advancing/paused English captions.
+
+`tests/guide_preservation.cjs` pins the previous inline slideshow source and current feature helper functions exactly. `tests/preservation.cjs`, intro runtime, intro narration and transcript tests also pass. SHA-256 checks confirm the intro film, all four narration tracks and the Arabic/English transcript and mission cue data are byte-identical to the pre-guide version. Static build and HTTP health checks include the new local illustration and the route manifest.

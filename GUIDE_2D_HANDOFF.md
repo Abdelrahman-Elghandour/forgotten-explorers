@@ -1,0 +1,11 @@
+# 2D mission-guide companion
+
+The selected craft view now has an original 2D mission-guide character instead of a WebGL scene. The guide is part of the same inline React/Babel application in `index.html`; it needs no Three.js, module imports, external JSX requests, canvas context or ResizeObserver. Its illustration is bundled under `images/mission-guide.webp`; a self-contained SVG character is used if the file cannot load. This preserves the local-file behavior of the working slideshow.
+
+The guide accompanies Opportunity (`opp`), Spirit (`spi`) and Lunokhod 1 (`lun`) with a mission-specific scientific explainer. Play, pause/resume and replay use the existing mission audio callbacks and original mastered Arabic recordings. There is no additional audio player, generated voice or duplicate narration. An explicit Listen action resumes Web Audio and enables sound if muted. Signal bars follow the corresponding `VOICE_ENVELOPES` samples at actual playback time; the fallback character’s expression also responds to that signal. These are restrained speech indicators, not phoneme-accurate lip synchronization.
+
+English translation stays in the bottom-center closed-caption layer, independent of the guide. A dedicated CC button toggles those captions; the full English transcript has its own separate control. Captions follow measured cue windows, disappear during silent gaps and after completion, and retain the last spoken line only during a pause of that same recording.
+
+The guide can be hidden without stopping the story or slideshow, and reopened with a small Guide control. Its controls are keyboard accessible, focus is restored when hiding/reopening, and reduced-motion preferences stop character floating. The original intro, Solar System, planetary roster and navigation, datasets, NASA integration, blueprint, simulator, lessons, quiz, Time Machine and certificates are not rebuilt or replaced.
+
+For local use, unzip the entire package and open `index.html`, preserving the `audio`, `images`, `src` and `videos` folders beside it. A local server remains available with `python3 serve.py`. The existing React/Babel/Tailwind CDN scripts require an internet connection, as they did before; the new guide itself does not depend on a 3D CDN or an external component fetch.

@@ -718,6 +718,234 @@ const Eq = () => <span aria-hidden className="flex items-end gap-[3px] h-5">{[0,
 })();
 
 // Optional layers (NASA media, 3D scene) must never be able to take the app down with them.
+/* ============ INLINE 2D MISSION GUIDE ============ */
+/* MissionGuide — injected into the existing React 18 inline Babel surface. */
+function MissionGuide({ mission, en, live, time, duration, muted, onToggle, onReplay }) {
+  const [open, setOpen] = React.useState(true);
+  const [imageFailed, setImageFailed] = React.useState(false);
+  const closeButtonRef = React.useRef(null);
+  const reopenButtonRef = React.useRef(null);
+  const restoreFocus = React.useRef(false);
+  const playbackSnapshot = React.useRef({ wasLive: false, lastTime: 0, lastDuration: 0 });
+  const pearlId = `missionGuidePearl${React.useId().replace(/:/g, "")}`;
+  const cyanId = `missionGuideCyan${React.useId().replace(/:/g, "")}`;
+  const missionId = mission && mission.id;
+
+  React.useEffect(() => {
+    setOpen(true);
+    setImageFailed(false);
+    playbackSnapshot.current = { wasLive: false, lastTime: 0, lastDuration: 0 };
+    restoreFocus.current = false;
+  }, [missionId]);
+
+  React.useEffect(() => {
+    if (!restoreFocus.current) return;
+    if (open) closeButtonRef.current && closeButtonRef.current.focus();
+    else reopenButtonRef.current && reopenButtonRef.current.focus();
+    if (open) restoreFocus.current = false;
+  }, [open]);
+
+  if (!mission) return null;
+
+  const facts = {
+    opp: {
+      en: "Evidence of past water on Mars.",
+      ar: "أدلة على وجود مياه قديمة على المريخ."
+    },
+    spi: {
+      en: "Silica-rich soil pointed to past hot springs.",
+      ar: "تربة غنية بالسيليكا أشارت إلى ينابيع حارة قديمة."
+    },
+    lun: {
+      en: "The first successful remotely operated rover on another world.",
+      ar: "أول عربة ناجحة تُقاد عن بُعد على عالم آخر."
+    }
+  };
+  const names = {
+    opp: "Opportunity",
+    spi: "Spirit",
+    lun: "Lunokhod 1"
+  };
+  const fact = facts[missionId] || {
+    en: "A field-tested machine extended what humans could explore.",
+    ar: "آلة ميدانية وسّعت حدود ما يستطيع البشر استكشافه."
+  };
+  const missionName = en ? (mission.enName || names[missionId] || mission.name || mission.n || missionId) : (mission.n || mission.arName || mission.name || names[missionId] || missionId);
+  const guideAccent = missionId === "spi" ? "#8bd3ff" : missionId === "lun" ? "#f3c777" : "#82e8df";
+  const voiceData = typeof window !== "undefined" && window.VOICE_ENVELOPES;
+  const rate = voiceData && Number(voiceData.rate) > 0 ? Number(voiceData.rate) : 20;
+  const envelope = voiceData && Array.isArray(voiceData[missionId]) ? voiceData[missionId] : null;
+  const sampleIndex = Math.max(0, Math.min(envelope ? envelope.length - 1 : 0, Math.floor(Math.max(0, Number(time) || 0) * rate)));
+  const sampledLevel = live && !muted && envelope && envelope.length ? Number(envelope[sampleIndex]) || 0 : 0;
+  const speechLevel = Math.max(0, Math.min(1, sampledLevel));
+  const numericTime = Math.max(0, Number(time) || 0);
+  const numericDuration = Math.max(0, Number(duration) || 0);
+  if (live) {
+    playbackSnapshot.current = { wasLive: true, lastTime: numericTime, lastDuration: numericDuration };
+  }
+  const reachedEnd = numericDuration > 0 && numericTime >= Math.max(0, numericDuration - 0.25);
+  const parentResetAfterEnd = !live && numericTime === 0 && numericDuration === 0 && playbackSnapshot.current.wasLive && playbackSnapshot.current.lastDuration > 0;
+  const ended = reachedEnd || parentResetAfterEnd;
+  const mode = muted ? "muted" : ended ? "ended" : live ? "speaking" : numericTime > 0.08 ? "paused" : "ready";
+  const modeText = {
+    speaking: en ? "Speaking" : "يتحدث",
+    paused: en ? "Paused" : "متوقف مؤقتاً",
+    ready: en ? "Ready" : "جاهز",
+    ended: en ? "Ended" : "انتهى",
+    muted: en ? "Muted" : "صامت"
+  }[mode];
+  const playLabel = mode === "muted" ? (en ? "Enable sound and listen" : "تشغيل الصوت والاستماع") : mode === "speaking"
+    ? (en ? "Pause narration" : "إيقاف السرد مؤقتاً")
+    : mode === "ended"
+      ? (en ? "Replay narration" : "إعادة تشغيل السرد")
+      : (en ? (mode === "paused" ? "Resume narration" : "Play narration") : (mode === "paused" ? "استئناف السرد" : "تشغيل السرد"));
+  const barHeights = [0.42, 0.72, 0.54, 0.9, 0.62, 0.78, 0.46].map((weight, index) => {
+    const idle = 0.22 + ((index * 7) % 4) * 0.035;
+    return `${Math.round(100 * (mode === "speaking" ? idle + speechLevel * weight : idle))}%`;
+  });
+  const cardStyle = {
+    "--guide-accent": guideAccent,
+    "--speech-level": speechLevel,
+    "--speech-opacity": mode === "speaking" ? 1 : 0.48
+  };
+  const handlePlay = () => {
+    if (mode === "ended") onReplay && onReplay(mission);
+    else onToggle && onToggle(mission);
+  };
+  const hideGuide = () => {
+    restoreFocus.current = true;
+    setOpen(false);
+  };
+  const restoreGuide = () => {
+    restoreFocus.current = true;
+    setOpen(true);
+  };
+
+  return (
+    <div className="mission-guide" style={cardStyle} data-open={open ? "1" : "0"} data-mode={mode} data-mission={missionId} dir="ltr" onPointerDown={(event) => event.stopPropagation()}>
+      {open ? (
+        <section className="mission-guide__card" aria-label={en ? `Mission guide for ${missionName}` : `دليل المهمة ${missionName}`}>
+          <div className="mission-guide__avatar" aria-hidden="true">
+            {!imageFailed ? (
+              <img src="./images/mission-guide.webp" alt="" onError={() => setImageFailed(true)} />
+            ) : (
+              <svg className="mission-guide__robot" data-guide-fallback="true" viewBox="0 0 120 148" role="presentation">
+                <defs>
+                  <linearGradient id={pearlId} x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stopColor="#ffffff" />
+                    <stop offset="0.55" stopColor="#dce8ef" />
+                    <stop offset="1" stopColor="#9cacbb" />
+                  </linearGradient>
+                  <linearGradient id={cyanId} x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stopColor="#9cf8f0" />
+                    <stop offset="1" stopColor="#31b8d5" />
+                  </linearGradient>
+                </defs>
+                <path d="M60 10v10" stroke="#91e8e1" strokeWidth="3" strokeLinecap="round" />
+                <circle cx="60" cy="8" r="4" fill="#f3c777" />
+                <rect x="17" y="26" width="86" height="67" rx="25" fill="#111b2b" stroke="#e9f5fb" strokeOpacity=".8" strokeWidth="3" />
+                <rect x="24" y="33" width="72" height="53" rx="19" fill="#1a293c" />
+                <circle cx="45" cy="58" r="9" fill={`url(#${cyanId})`} />
+                <circle cx="75" cy="58" r="9" fill={`url(#${cyanId})`} />
+                <circle cx="42" cy="55" r="2.5" fill="#ffffff" opacity=".9" />
+                <circle cx="72" cy="55" r="2.5" fill="#ffffff" opacity=".9" />
+                <path d={speechLevel > 0.18 ? "M47 75 Q60 84 73 75" : "M49 76 Q60 79 71 76"} fill="none" stroke="#f3b86c" strokeWidth="4" strokeLinecap="round" />
+                <path d="M16 71H9M104 71h7" stroke="#91e8e1" strokeWidth="3" strokeLinecap="round" />
+                <rect x="27" y="91" width="66" height="42" rx="18" fill={`url(#${pearlId})`} stroke="#ffffff" strokeOpacity=".72" strokeWidth="2" />
+                <path d="M43 101v15M60 101v15M77 101v15" stroke="#7890a0" strokeOpacity=".55" strokeWidth="3" strokeLinecap="round" />
+                <circle cx="60" cy="124" r="4" fill="#f3c777" />
+                <path d="M33 133l-8 8M87 133l8 8" stroke="#b8c9d4" strokeWidth="6" strokeLinecap="round" />
+              </svg>
+            )}
+            <span className="mission-guide__signal" aria-hidden="true">
+              <i /><i /><i />
+            </span>
+          </div>
+
+          <div className="mission-guide__content" dir={en ? "ltr" : "rtl"}>
+            <div className="mission-guide__topline">
+              <div className="mission-guide__identity">
+                <span className="mission-guide__label">MISSION GUIDE · دليل المهمة</span>
+                <strong className="mission-guide__name" title={missionName}>{missionName}</strong>
+              </div>
+              <button
+                ref={closeButtonRef}
+                type="button"
+                className="mission-guide__close mission-guide__hide"
+                onClick={hideGuide}
+                aria-label={en ? "Hide mission guide" : "إخفاء دليل المهمة"}
+                title={en ? "Hide guide" : "إخفاء الدليل"}
+              >
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" /></svg>
+              </button>
+            </div>
+
+            <div className="mission-guide__status" role="status" aria-live="polite">
+              <span className="mission-guide__status-dot" aria-hidden="true" />
+              <span>{modeText}</span>
+              <span className="mission-guide__bars" aria-hidden="true">
+                {barHeights.map((height, index) => <i key={index} style={{ height }} />)}
+              </span>
+            </div>
+
+            <div className="mission-guide__fact" aria-label={en ? "Why it matters" : "أثر المهمة"}>
+              <span className="mission-guide__fact-label">WHY IT MATTERS / أثر المهمة</span>
+              <span className="mission-guide__fact-text" title={en ? fact.en : fact.ar}>{en ? fact.en : fact.ar}</span>
+            </div>
+
+            {mode === "speaking" && (
+              <p className="mission-guide__follow" lang={en ? "en" : "ar"}>
+                {en ? "Follow the English captions below." : "تابع الترجمة الإنجليزية أسفل الصورة."}
+              </p>
+            )}
+
+            <div className="mission-guide__controls">
+              <button
+                type="button"
+                className="mission-guide__play"
+                onClick={handlePlay}
+                aria-label={playLabel}
+                aria-pressed={mode === "speaking"}
+                title={playLabel}
+              >
+                {mode === "speaking" ? (
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 4h3v12H5zM12 4h3v12h-3z" /></svg>
+                ) : (
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4.8v10.4a1 1 0 0 0 1.5.86l7.1-5.2a1 1 0 0 0 0-1.62l-7.1-5.2A1 1 0 0 0 7 4.8z" /></svg>
+                )}
+                <span>{mode === "speaking" ? (en ? "Pause" : "إيقاف") : mode === "paused" ? (en ? "Resume" : "استئناف") : mode === "ended" ? (en ? "Replay" : "إعادة") : (en ? "Play" : "تشغيل")}</span>
+              </button>
+              <button
+                type="button"
+                className="mission-guide__replay"
+                onClick={() => onReplay && onReplay(mission)}
+                aria-label={en ? "Replay narration from the beginning" : "إعادة السرد من البداية"}
+                title={en ? "Replay from start" : "إعادة من البداية"}
+              >
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 9a6 6 0 1 0 0 4M16 9V4m0 5h-5" /></svg>
+                <span>{en ? "Replay" : "إعادة"}</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <button
+          ref={reopenButtonRef}
+          type="button"
+          className="mission-guide__reopen"
+          onClick={restoreGuide}
+          aria-label={en ? "Show mission guide" : "إظهار دليل المهمة"}
+          aria-expanded={false}
+          title={en ? "Show mission guide" : "إظهار دليل المهمة"}
+        >
+          <span className="mission-guide__reopen-dot" aria-hidden="true" />
+          <span>GUIDE</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
 class SlotBoundary extends React.Component {
   constructor(props) { super(props); this.state = { failed: false }; }
   static getDerivedStateFromError() { return { failed: true }; }
@@ -729,7 +957,7 @@ const useCompact = () => {
   useEffect(() => { const on = () => setC(window.innerWidth < 1024); window.addEventListener("resize", on); return () => window.removeEventListener("resize", on); }, []);
   return c;
 };
-function Surface({ B, name, list, nm, tg, en, onOpen, onLocked, play, imgs, onUpload, onTell, onToggle, onReplay, speaking, voiceId, notice, real, captionsOn, onCaptionsToggle, voiceCue, voiceTime }) {
+function Surface({ B, name, list, nm, tg, en, onOpen, onLocked, play, imgs, onUpload, onTell, onToggle, onReplay, speaking, voiceId, notice, real, captionsOn, onCaptionsToggle, voiceCue, voiceTime, voiceDuration, muted, onGuideToggle, onGuideReplay }) {
   const [pan, setPan] = useState(0.3), [focus, setFocus] = useState(null), [drag, setDrag] = useState(null);
   const box = useRef(), moved = useRef(false);
   const far = useMemo(() => hill(1, 7, 55), []), near = useMemo(() => hill(4, 4, 78), []);
@@ -742,10 +970,12 @@ function Surface({ B, name, list, nm, tg, en, onOpen, onLocked, play, imgs, onUp
   const live = !!fm && speaking && voiceId === fm.id;
   // Captions use the same measured cue data as the intro, so they follow the audio exactly.
   const craftCue = fm && voiceId === fm.id && voiceCue && voiceCue.text ? voiceCue : null;
-  // Keep the last spoken line on screen while paused; clear it when another craft opens.
+  const [closedCaptionsOn, setClosedCaptionsOn] = useState(true);
+  // Keep the last spoken line only while this recording is paused, never across cue gaps or completion.
   const cueHold = React.useRef({ id: null, cue: null });
   if (craftCue) cueHold.current = { id: fm.id, cue: craftCue };
-  const shownCue = craftCue || (fm && cueHold.current.id === fm.id ? cueHold.current.cue : null);
+  const pausedHere = fm && voiceId === fm.id && !speaking;
+  const shownCue = closedCaptionsOn ? (craftCue || (pausedHere && cueHold.current.id === fm.id ? cueHold.current.cue : null)) : null;
   const [credit, setCredit] = useState({ t: im && im.t, i: im && im.i });
   const compact = useCompact();
   useEffect(() => { setCredit({ t: im && im.t, i: im && im.i }); }, [im && im.u]);
@@ -782,7 +1012,10 @@ function Surface({ B, name, list, nm, tg, en, onOpen, onLocked, play, imgs, onUp
                 : plate ? <img className="craft-hero on" src={plate} alt={credit.t || nm(fm)} referrerPolicy="no-referrer" /> : null}
             </SlotBoundary>
             <div className="craft-mask" />
-            <div className="craft-caption voice-caption" dir="ltr" lang="en" aria-live="off" data-present={shownCue ? "1" : "0"} data-speaking={craftCue ? "1" : "0"}>
+            <SlotBoundary key={fm.id}>
+              <MissionGuide key={fm.id} mission={fm} en={en} live={live} time={voiceId === fm.id ? voiceTime : 0} duration={voiceId === fm.id ? voiceDuration : 0} muted={muted} onToggle={onGuideToggle} onReplay={onGuideReplay} />
+            </SlotBoundary>
+            <div className="craft-caption voice-caption" dir="ltr" lang="en" aria-live="off" data-present={shownCue ? "1" : "0"} data-speaking={live && craftCue ? "1" : "0"}>
               {shownCue ? <React.Fragment>
                 <span className="craft-caption__label">EN · {(EN[fm.id] || [fm.n])[0]}</span>
                 <span className="craft-caption__line">{shownCue.text}</span>
@@ -836,9 +1069,9 @@ function Surface({ B, name, list, nm, tg, en, onOpen, onLocked, play, imgs, onUp
                 <button className="craft-voice__re" onClick={() => { play("click"); onReplay(fm); }} aria-label={en ? "Replay" : "إعادة"}><Replay size={15} /></button>
               </div>
               <div className="flex items-center justify-between gap-2">
-                <button className="voice-transcript-toggle" onClick={() => onCaptionsToggle(!captionsOn)} aria-pressed={captionsOn}>{en ? (captionsOn ? "EN captions / transcript on" : "EN captions / transcript off") : (captionsOn ? "إخفاء النص الإنجليزي" : "النص الإنجليزي / EN captions")}</button>
+                <button className="voice-transcript-toggle craft-cc-control" onClick={() => setClosedCaptionsOn(!closedCaptionsOn)} aria-pressed={closedCaptionsOn} aria-label={en ? "Toggle English closed captions" : "تبديل الترجمة الإنجليزية"}>CC · {closedCaptionsOn ? "ON" : "OFF"}</button>
+                <button className="voice-transcript-toggle" onClick={() => onCaptionsToggle(!captionsOn)} aria-pressed={captionsOn}>{en ? (captionsOn ? "Hide English transcript" : "English transcript") : (captionsOn ? "إخفاء النص الإنجليزي" : "النص الإنجليزي")}</button>
               </div>
-              {live && captionsOn && voiceCue && <div className="voice-caption" dir="ltr"><span className="voice-caption__label">{voiceCue.untimed ? "English transcript · awaiting matched narration timing" : "English caption"}</span>{voiceCue.text}</div>}
 
               {notice && <p className="text-xs text-amber-300">{notice}</p>}
 
@@ -1088,10 +1321,440 @@ function ForgottenExplorers() {
         .craft-strip__play.on{background:var(--c);color:#05070d;border-color:transparent}
         .craft-video-wait{position:absolute;inset:0;display:grid;place-content:center;gap:6px;text-align:center;color:#cfe0f5;font-size:12px}
         .craft-hero--video{object-fit:contain;background:#000;animation:none}
+.mission-guide {
+  --guide-accent: #82e8df;
+  --speech-level: 0;
+  --speech-opacity: .48;
+  position: absolute;
+  top: 108px;
+  left: 14px;
+  z-index: 8;
+  width: min(370px, calc(100% - 28px));
+  color: #eef7ff;
+  font-family: inherit;
+  pointer-events: none;
+}
+
+.mission-guide__card {
+  display: flex;
+  min-height: 128px;
+  overflow: hidden;
+  border: 1px solid rgba(207, 231, 244, .2);
+  border-radius: 18px;
+  background: linear-gradient(112deg, rgba(8, 15, 28, .94), rgba(12, 22, 38, .84) 67%, rgba(7, 13, 25, .9));
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .42), inset 0 1px 0 rgba(255, 255, 255, .07), 0 0 0 1px rgba(8, 14, 26, .42);
+  backdrop-filter: blur(18px) saturate(1.18);
+  pointer-events: auto;
+  isolation: isolate;
+}
+
+.mission-guide__card::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(circle at 11% 36%, color-mix(in srgb, var(--guide-accent) 20%, transparent), transparent 38%);
+  content: "";
+  opacity: .55;
+  pointer-events: none;
+}
+
+.mission-guide__avatar {
+  position: relative;
+  flex: 0 0 98px;
+  width: 98px;
+  min-height: 120px;
+  overflow: hidden;
+  display: grid;
+  place-items: end center;
+  align-self: stretch;
+  background: radial-gradient(circle at 50% 52%, rgba(124, 232, 225, .13), transparent 62%);
+}
+
+.mission-guide__avatar::after {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  left: 10px;
+  height: 13px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(1, 6, 14, .6), transparent 70%);
+  content: "";
+  filter: blur(3px);
+}
+
+.mission-guide__avatar img,
+.mission-guide__robot {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 98px;
+  height: 120px;
+  object-fit: contain;
+  object-position: center bottom;
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, .4));
+  animation: mission-guide-float 5.8s ease-in-out infinite;
+}
+
+.mission-guide__robot {
+  padding: 3px 3px 0;
+}
+
+.mission-guide__signal {
+  position: absolute;
+  top: 39px;
+  right: 8px;
+  z-index: 2;
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+  width: 20px;
+  height: 22px;
+  opacity: var(--speech-opacity);
+  transition: opacity .22s ease;
+}
+
+.mission-guide__signal i {
+  display: block;
+  width: 3px;
+  height: 36%;
+  border-radius: 4px;
+  background: var(--guide-accent);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--guide-accent) 70%, transparent);
+  transform-origin: bottom;
+}
+
+.mission-guide__signal i:nth-child(2) { height: 70%; }
+.mission-guide__signal i:nth-child(3) { height: 50%; }
+.mission-guide[data-mode="speaking"] .mission-guide__signal i {
+  transform: scaleY(calc(.72 + var(--speech-level) * .55));
+}
+
+.mission-guide__content {
+  min-width: 0;
+  flex: 1;
+  padding: 11px 11px 10px 5px;
+}
+
+.mission-guide__topline {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.mission-guide__identity {
+  min-width: 0;
+  flex: 1;
+}
+
+.mission-guide__label,
+.mission-guide__fact-label {
+  display: block;
+  color: rgba(185, 214, 236, .66);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .15em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.mission-guide__name {
+  display: block;
+  overflow: hidden;
+  margin-top: 3px;
+  color: #f3f8fc;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mission-guide__close {
+  display: grid;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  margin: -3px -2px 0 0;
+  padding: 0;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 50%;
+  color: rgba(232, 245, 252, .74);
+  background: rgba(255, 255, 255, .055);
+  cursor: pointer;
+  transition: border-color .2s ease, background .2s ease, color .2s ease;
+}
+
+.mission-guide__close:hover,
+.mission-guide__close:focus-visible {
+  border-color: var(--guide-accent);
+  color: #fff;
+  background: rgba(255, 255, 255, .12);
+}
+
+.mission-guide__close svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.6;
+}
+
+.mission-guide__status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 17px;
+  margin-top: 4px;
+  color: rgba(213, 231, 244, .72);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.mission-guide__status-dot,
+.mission-guide__reopen-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  flex: 0 0 5px;
+  border-radius: 50%;
+  background: var(--guide-accent);
+  box-shadow: 0 0 8px var(--guide-accent);
+}
+
+.mission-guide[data-mode="speaking"] .mission-guide__status-dot {
+  box-shadow: 0 0 calc(7px + 9px * var(--speech-level)) var(--guide-accent);
+}
+
+.mission-guide__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  width: 24px;
+  height: 12px;
+  margin-left: 2px;
+}
+
+.mission-guide__bars i {
+  display: block;
+  width: 2px;
+  min-height: 2px;
+  border-radius: 2px;
+  background: var(--guide-accent);
+  opacity: var(--speech-opacity);
+  transition: height .18s ease, opacity .2s ease;
+}
+
+.mission-guide__fact {
+  min-width: 0;
+  margin-top: 5px;
+  padding: 5px 7px 6px;
+  border-left: 2px solid color-mix(in srgb, var(--guide-accent) 70%, transparent);
+  background: rgba(255, 255, 255, .045);
+}
+
+.mission-guide__fact-text {
+  display: block;
+  overflow: hidden;
+  margin-top: 2px;
+  color: rgba(241, 247, 252, .92);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mission-guide__follow {
+  overflow: hidden;
+  margin: 4px 0 0;
+  color: var(--guide-accent);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mission-guide__controls {
+  display: flex;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.mission-guide__play,
+.mission-guide__replay {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 27px;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  transition: transform .2s ease, background .2s ease, border-color .2s ease;
+}
+
+.mission-guide__play {
+  min-width: 76px;
+  padding: 5px 9px;
+  border: 1px solid transparent;
+  color: #06111a;
+  background: var(--guide-accent);
+  box-shadow: 0 5px 13px rgba(0, 0, 0, .22);
+}
+
+.mission-guide__replay {
+  padding: 5px 8px;
+  border: 1px solid rgba(211, 232, 243, .18);
+  color: rgba(239, 247, 252, .86);
+  background: rgba(255, 255, 255, .055);
+}
+
+.mission-guide__play:hover,
+.mission-guide__replay:hover {
+  transform: translateY(-1px);
+}
+
+.mission-guide__play:hover { filter: brightness(1.08); }
+.mission-guide__replay:hover { border-color: rgba(211, 232, 243, .4); background: rgba(255, 255, 255, .11); }
+
+.mission-guide__play svg,
+.mission-guide__replay svg {
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.mission-guide__play svg path:first-child + path,
+.mission-guide__replay svg { fill: none; }
+
+.mission-guide__reopen {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 29px;
+  padding: 5px 10px;
+  border: 1px solid rgba(211, 232, 243, .2);
+  border-radius: 999px;
+  color: rgba(239, 247, 252, .84);
+  background: rgba(8, 15, 28, .86);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .35);
+  backdrop-filter: blur(16px);
+  cursor: pointer;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  pointer-events: auto;
+  transition: border-color .2s ease, background .2s ease, transform .2s ease;
+}
+
+.mission-guide__reopen:hover,
+.mission-guide__reopen:focus-visible {
+  border-color: var(--guide-accent);
+  background: rgba(15, 29, 46, .96);
+  transform: translateY(-1px);
+}
+
+.mission-guide button:focus-visible {
+  outline: 2px solid var(--guide-accent);
+  outline-offset: 2px;
+}
+
+@keyframes mission-guide-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@media (max-width: 1023px) {
+  .mission-guide {
+    top: 147px;
+    left: 14px;
+    width: calc(100% - 28px);
+  }
+
+  .mission-guide__card {
+    min-height: 80px;
+    border-radius: 14px;
+  }
+
+  .mission-guide__avatar {
+    flex-basis: 52px;
+    width: 52px;
+    min-height: 72px;
+  }
+
+  .mission-guide__avatar img,
+  .mission-guide__robot {
+    width: 52px;
+    height: 72px;
+  }
+
+  .mission-guide__avatar::after { right: 5px; bottom: 5px; left: 5px; height: 8px; }
+  .mission-guide__signal { top: 20px; right: 3px; transform: scale(.7); transform-origin: right center; }
+  .mission-guide__content { padding: 7px 8px 7px 4px; }
+  .mission-guide__label,
+  .mission-guide__fact-label { font-size: 6.5px; letter-spacing: .1em; }
+  .mission-guide__name { margin-top: 2px; font-size: 12px; }
+  .mission-guide__close { width: 21px; height: 21px; flex-basis: 21px; }
+  .mission-guide__status { min-height: 13px; margin-top: 2px; font-size: 7px; }
+  .mission-guide__status-dot,
+  .mission-guide__reopen-dot { width: 4px; height: 4px; flex-basis: 4px; }
+  .mission-guide__fact { margin-top: 2px; padding: 3px 5px 4px; }
+  .mission-guide__fact-text { margin-top: 1px; font-size: 8px; }
+  .mission-guide__follow { margin-top: 2px; font-size: 7.5px; }
+  .mission-guide__controls { gap: 4px; margin-top: 4px; }
+  .mission-guide__play,
+  .mission-guide__replay { min-height: 22px; padding: 3px 6px; font-size: 7.5px; }
+  .mission-guide__play { min-width: 59px; }
+  .mission-guide__play svg,
+  .mission-guide__replay svg { width: 11px; height: 11px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mission-guide__avatar img,
+  .mission-guide__robot,
+  .mission-guide__play,
+  .mission-guide__replay,
+  .mission-guide__reopen { animation: none; transition: none; }
+  .mission-guide__bars i,
+  .mission-guide__signal i { transition: none; }
+}
+
+/* Short phones: keep the character beside, never on top of, the caption column. */
+@media (max-width: 1023px) and (max-height: 900px) {
+  .mission-guide { top: 150px; width: 116px; }
+  .mission-guide__card { min-height: 92px; border-radius: 13px; }
+  .mission-guide__avatar { flex-basis: 43px; width: 43px; min-height: 92px; }
+  .mission-guide__avatar img, .mission-guide__robot { width: 43px; height: 70px; }
+  .mission-guide__content { padding: 25px 5px 7px 0; }
+  .mission-guide__label, .mission-guide__fact, .mission-guide__follow, .mission-guide__bars { display: none; }
+  .mission-guide__name { font-size: 9px; line-height: 1.4; }
+  .mission-guide__close { position: absolute; top: 6px; right: 8px; margin: 0; }
+  .mission-guide__status { font-size: 6.5px; letter-spacing: 0; gap: 3px; }
+  .mission-guide__controls { gap: 3px; margin-top: 5px; }
+  .mission-guide__play, .mission-guide__replay { min-width: 0; width: 27px; min-height: 29px; padding: 3px; }
+  .mission-guide__controls button span { display: none; }
+  .mission-guide[data-open="1"] ~ .craft-caption { left: auto; right: 12px; width: calc(100% - 148px); transform: none; }
+}
+
         /* ---- closed captions for the craft narration (mirrors the intro) ---- */
         .craft-caption{position:absolute;left:50%;transform:translateX(-50%);bottom:134px;z-index:9;width:min(760px,calc(100% - 120px));padding:11px 16px 12px;border-radius:14px;background:rgba(5,7,13,.72);border:1px solid rgba(139,211,255,.18);backdrop-filter:blur(16px) saturate(1.15);box-shadow:0 16px 40px rgba(0,0,0,.5);text-align:center;pointer-events:none;opacity:0;transition:opacity .35s ease}
         .craft-caption[data-present="1"]{opacity:1}
-        .craft-caption[data-speaking="0"]{opacity:.72}
+        .craft-caption[data-present="1"][data-speaking="0"]{opacity:.72}
         .craft-caption__label{display:block;margin-bottom:5px;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:rgba(150,187,216,.85);font-weight:800}
         .craft-caption__line{display:block;font-size:clamp(13px,1.15vw,17px);line-height:1.5;font-weight:600;color:#f5f8fc;text-shadow:0 2px 6px rgba(0,0,0,.8)}
         .craft-caption__idle{display:block;font-size:12px;color:rgba(196,216,236,.6)}
@@ -1128,7 +1791,7 @@ function ForgottenExplorers() {
         </div>
       )}
 
-      {view !== "solar" && <Surface key={view} imgs={imgs} onUpload={upload} B={B} name={bn(view)} list={list} nm={nm} tg={tg} en={en} onOpen={openMission} onLocked={() => setSoon(view)} play={play} onTell={tellMission} onToggle={toggleVoice} speaking={speaking} voiceId={voiceId} onReplay={replayVoice} notice={notice} real={realIcons} captionsOn={captionsOn} onCaptionsToggle={setCaptionsOn} voiceCue={voiceCue} voiceTime={voiceTime} />}
+      {view !== "solar" && <Surface key={view} imgs={imgs} onUpload={upload} B={B} name={bn(view)} list={list} nm={nm} tg={tg} en={en} onOpen={openMission} onLocked={() => setSoon(view)} play={play} onTell={tellMission} onToggle={toggleVoice} speaking={speaking} voiceId={voiceId} onReplay={replayVoice} notice={notice} real={realIcons} captionsOn={captionsOn} onCaptionsToggle={setCaptionsOn} voiceCue={voiceCue} voiceTime={voiceTime} voiceDuration={voiceDuration} muted={muted} onGuideToggle={(m) => { unlockAudio(); const wasMuted = mutedRef.current; if (wasMuted) setAppMuted(false); if (!(wasMuted && speaking && voiceId === m.id)) toggleVoice(m); }} onGuideReplay={(m) => { unlockAudio(); if (mutedRef.current) setAppMuted(false); replayVoice(m); }} />}
 
       {soon && (
         <div className="fixed inset-0 z-[45] grid place-items-center p-6" role="dialog" aria-modal="true" aria-label={en ? "Coming soon" : "قريباً"} onClick={() => setSoon(null)}>

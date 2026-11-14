@@ -66,6 +66,14 @@ the project from disk (`file://`) behaves exactly like the served Preview, and t
 python3 tools/fetch_craft_gallery.py   # refresh the bundled NASA photograph set
 ```
 
+## Reliable 2D mission guide
+
+The selected rover view now includes a refined illustrated 2D guide. Its character is bundled at `images/mission-guide.webp`, with a built-in SVG fallback if that file fails to load. Its function and styling are inside `index.html`, just like the working slideshow: no Three.js, WebGL, external JSX requests or ResizeObserver is needed.
+
+The guide identifies the selected mission, gives a short Arabic/English explanation of why it mattered, and accompanies the existing Arabic recording with a subtle speech signal driven by the voice envelope. Its play/pause/resume and replay controls reuse the current audio player rather than starting a second voice. Hide/reopen affects only the guide, not the story or slideshow. Short phones use a compact character beside the caption column so the two do not overlap; reduced motion disables floating.
+
+English captions remain separate, with a dedicated CC toggle and a separate full-transcript control. Captions clear during cue gaps and at completion, and retain a dimmed line only on a pause of the same story. See `GUIDE_2D_HANDOFF.md` for implementation and local-use notes. The guide is a fictional interface character, not a depiction of the historical rover.
+
 ## Files
 
 * `src/data/craft-gallery.js`, `images/craft/` — bundled NASA photographs (generated).
