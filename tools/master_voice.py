@@ -120,11 +120,18 @@ def master(key, source):
 
 
 if __name__ == '__main__':
-    report = [master(key, src) for key, src in SOURCES.items()]
-    (WORK / 'mastering-report.json').write_text(json.dumps({'chain': CHAIN, 'targetLufs': -16, 'truePeakDbtp': -1.5, 'files': report}, indent=2) + '\n')
+    import sys
+    wanted = [a for a in sys.argv[1:] if a in SOURCES] or list(SOURCES)
+    report_path = WORK / 'mastering-report.json'
+    existing = json.loads(report_path.read_text())['files'] if report_path.exists() else []
+    fresh = {row['key']: row for row in existing}
+    for key in wanted:
+        fresh[key] = master(key, SOURCES[key])
+    report = [fresh[key] for key in SOURCES if key in fresh]
+    report_path.write_text(json.dumps({'chain': CHAIN, 'targetLufs': -16, 'truePeakDbtp': -1.5, 'files': report}, indent=2) + '\n')
     for row in report:
         assert abs(row['residualOffsetMs']) < 2, row
         assert row['truePeakDbtp'] <= -1.4, row
         assert abs(row['loudnessLufs'] + 16) < 0.6, row
         print(f"{row['key']}: {row['durationSeconds']}s, {row['loudnessLufs']} LUFS, TP {row['truePeakDbtp']} dBTP, offset {row['residualOffsetMs']} ms")
-    print('All four masters passed loudness, headroom and timing checks.')
+    print(f'All {len(report)} masters passed loudness, headroom and timing checks.')

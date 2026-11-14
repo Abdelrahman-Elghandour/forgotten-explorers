@@ -18,3 +18,11 @@ The filter chain introduces a small processing delay; `tools/master_voice.py` me
 `work/voice-mastering/originals/` keeps byte-for-byte copies of the four uploads. `work/voice-mastering/masters/*.wav` holds the 48 kHz, 16-bit stereo masters. The app loads `audio/intro.mp3`, `audio/opp.mp3`, `audio/spi.mp3` and `audio/lun.mp3` (256 kbps) with OGG companions, and the intro also has hosted `/manus-storage/` editions for the film layer.
 
 `work/voice-mastering/mastering-report.json` records every filter, measured loudness and offset; `tests/voice_mastering.py` re-checks loudness, per-channel headroom, delivered-file lengths and phrase alignment. These are technical checks, not a claim that the recordings have become studio sessions.
+
+## Re-supplied Spirit and Lunokhod 1 recordings
+The two Mars/Moon rover takes were replaced with noise-reduced exports. `tools/master_voice.py`
+now accepts mission keys (`python3 tools/master_voice.py spi lun`) so a single replacement can be
+mastered without touching the other tracks, and the previous masters are kept under
+`work/voice-mastering/masters/previous/`. Both new files are the same performances as before:
+the measured lag is 2.2 ms with no drift across the clip, which is why the caption cues and the
+sentence windows did not need re-timing.

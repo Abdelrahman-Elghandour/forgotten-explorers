@@ -7,7 +7,8 @@ const root = path.resolve(__dirname, '..');
 const read = name => fs.readFileSync(path.join(root, name), 'utf8').replace(/\r\n/g, '\n');
 const original = read('original_step8.html');
 const updated = read('index.html');
-const inline = text => text.match(/<script type="text\/babel"[^>]*>([\s\S]*?)<\/script>/)[1];
+// The app script is the inline text/babel block; component files are loaded with src=.
+const inline = text => text.match(/<script type="text\/babel"(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/)[1];
 const clean = node => JSON.parse(JSON.stringify(node, (key, value) =>
   ['loc', 'start', 'end', 'extra', 'leadingComments', 'trailingComments', 'innerComments'].includes(key) ? undefined : value));
 const parse = html => Babel.transform(inline(html), {presets:['react'], ast:true, code:false}).ast.program;
@@ -96,14 +97,24 @@ for (const [label, re] of [
   ['blueprint action opens console tab', /onOpen\(fm\.id, "blue"\)/],
   ['simulator action opens console tab', /onOpen\(fm\.id, "sim"\)/],
   ['lesson action opens console tab', /onOpen\(fm\.id, "lesson"\)/],
-  ['high-resolution hero element', /className=\{"craft-hero"/],
+  ['multi-media stage mounted in the craft view', /<CraftMedia id=\{fm\.id\}/],
+  ['3D companion mounted in the craft view', /<RobotCompanion mission=\{fm\}/],
 ]) assert(re.test(surfaceSrc), `missing: ${label}`);
 assert(/object-fit:contain/.test(updated), 'Hero frames the entire craft without cropping');
 
 assert(!/setChip|\.craft-chips/.test(surfaceSrc), 'Facts are no longer hidden behind question chips');
 assert(/\.craft-mask\{position:absolute/.test(updated), 'Cinematic gradient mask present');
 assert(/linear-gradient\(to left,rgba\(5,7,13,\.98\)/.test(updated), 'Mask is asymmetric toward the HUD');
-assert(/~large/.test(surfaceSrc) && /~orig/.test(surfaceSrc), 'High-resolution NASA ~large with ~orig fallback');
+const mediaSrc = fs.readFileSync(path.join(root, 'src/components/craft-media.jsx'), 'utf8');
+const robotSrc = fs.readFileSync(path.join(root, 'src/components/robot-companion.jsx'), 'utf8');
+assert(/className: "craft-hero"/.test(mediaSrc), "high-resolution hero element");
+assert(/~orig/.test(mediaSrc) && /~large/.test(mediaSrc) && /~thumb/.test(mediaSrc), 'NASA ~orig with ~large/~thumb fallbacks');
+assert(/media_type=\$\{media\}/.test(mediaSrc) && /"video"/.test(mediaSrc), 'photos and mission videos are searched separately');
+assert(/craft-thumb/.test(mediaSrc) && /craft-strip/.test(mediaSrc), 'filmstrip markup present');
+assert(/SLIDE_MS = 7000/.test(mediaSrc) && /stopAuto/.test(mediaSrc), 'slideshow advances then pauses on interaction');
+assert(/window\.__THREE/.test(robotSrc) && /WebGLRenderer/.test(robotSrc), '3D robot renders through Three.js');
+assert(/VOICE_ENVELOPES/.test(robotSrc), 'robot animation follows the narration envelope');
+assert(/MISSION_SENTENCES/.test(robotSrc), 'live transcript reads the measured sentence windows');
 assert(/craft-hero/.test(updated) && /@keyframes drift/.test(updated), 'Slow cinematic drift applied to the hero plate');
 assert(/const VOICE_TRACKS = Object\.fromEntries\(VOICE_IDS/.test(updated), 'Voice slots mapped by mission id');
 assert(/"intro"/.test(updated), 'Dedicated intro narration slot');

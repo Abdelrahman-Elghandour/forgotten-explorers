@@ -28,6 +28,20 @@ All four new recordings were mastered and measured: −15.8 to −16.1 LUFS, tru
 
 `node tests/intro_narration.cjs` and `tests/browser_narration.py` still pass: narration begins at video 11.85 s, score ducking engages, mid-film unmute does not restart the video, Skip cleans up, and the transcript stays reachable after the film.
 
+## Media stage, 3D companion and the re-supplied recordings
+`python3 tools/master_voice.py spi lun` rebuilt Spirit and Lunokhod 1 from the noise-reduced
+re-recordings; both are the same performances (cross-correlation lag 2.2 ms, no drift across the
+clip), so every measured cue window stayed valid. `tests/voice_mastering.py` confirms -16 LUFS,
+≤ -1.5 dBTP and phrase alignment within 20 ms for all four tracks.
+`tests/browser_companion.py` drives Chromium and confirms: eight slides with a photo/video mix,
+arrow navigation changing the image, manual navigation pausing the slideshow, a video slide
+resolving a real `~mobile.mp4` and playing, a WebGL robot that visibly rotates on drag, the bubble
+speaking only recorded sentences and advancing between them, a distinct Lunokhod 1 model, the
+mobile layout staying inside the media area, and no page errors. `tests/preservation.cjs` still
+pins every original module and the whole surface/canvas code, and now also checks the carousel
+and companion contracts. `tests/browser_craft.py`, `browser_seam.py`, `browser_narration.py` and
+`browser_transcripts.py` continue to pass.
+
 ## Known limits
 
 A browser autoplay policy can still start the film muted; the audio control and any first interaction unmute it. On narrow portrait viewports the film's final framing is larger than the canvas's compact system, so the dissolve reads as a settle rather than an exact pixel match. Hero imagery is whatever NASA asset the app's own query or pinned id resolves to, so an occasional photograph is a detail shot rather than a full-portrait of the craft; the framing never crops it further.

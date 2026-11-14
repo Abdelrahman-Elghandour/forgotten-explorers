@@ -23,8 +23,15 @@ window.__arcs = [];
 
 
 async def planets(page):
-    return await page.evaluate("""() => { const now = performance.now(); const m = new Map();
-        __arcs.filter(a => now - a[3] < 500).forEach(a => { const k = Math.round(a[0]) + ',' + Math.round(a[1]);
+    # Only the newest frame: older entries are where the planets used to be, and the
+    # hit radius is tight enough that a stale coordinate misses.
+    return await page.evaluate("""() => {
+        const now = performance.now();
+        const fresh = __arcs.filter(a => now - a[3] < 500);
+        if (!fresh.length) return [];
+        const last = fresh[fresh.length - 1][3];
+        const m = new Map();
+        fresh.filter(a => a[3] === last).forEach(a => { const k = Math.round(a[0]) + ',' + Math.round(a[1]);
             if (!m.has(k)) m.set(k, [a[0], a[1], a[2]]); });
         return [...m.values()]; }""")
 
@@ -76,7 +83,8 @@ async def main():
         actions = await page.eval_on_selector_all(".craft-act", "els => els.map(e => e.innerText)")
         voice = await page.eval_on_selector(".craft-voice", "e => e.innerText.replace(/\\n/g, ' | ')")
         title = await page.eval_on_selector(".craft-title", "e => e.textContent")
-        hero = await page.eval_on_selector(".craft-hero", "e => ({ src: e.currentSrc || e.src, w: e.naturalWidth, loaded: e.classList.contains('on') })")
+        await page.wait_for_function("() => { const i = document.querySelector('.craft-frame img.craft-hero.on'); return !!i && i.naturalWidth > 0; }", timeout=20000)
+        hero = await page.eval_on_selector(".craft-frame img.craft-hero.on", "e => ({ src: e.currentSrc || e.src, w: e.naturalWidth, loaded: e.classList.contains('on') })")
         print("title:", title)
         print("facts:", facts)
         print("actions:", actions)
